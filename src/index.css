@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+:root {
+  --color-primary-rose: #C94F6D;
+  --color-dark-rose: #A83D58;
+  --color-soft-rose: #FCE7EC;
+  --color-light-rose: #FFF4F6;
+  --color-gold: #D9A441;
+  --color-soft-gold: #FFF3D6;
+  --color-bg: #FFF9F5;
+  --color-card: #FFFFFF;
+  --color-text-main: #29252A;
+  --color-text-secondary: #756B70;
+  --color-border: #EDE2E5;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: #FFF9F5;
+  color: #29252A;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom subtle scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #FFF9F5;
+}
+::-webkit-scrollbar-thumb {
+  background: #E8D3D8;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #D9B3BC;
+}
+
+/* Print styles for A4 & Thermal POS */
+@media print {
+  body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  .print-container {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    box-shadow: none !important;
+    border: none !important;
+  }
+}
