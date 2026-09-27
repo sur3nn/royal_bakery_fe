@@ -93,7 +93,7 @@ export interface BulkOrder {
   deliveryTime: string; // e.g. "16:30"
   deliveryAddress: string;
   deliveryType: 'Home Delivery' | 'Store Pickup';
-  items: BulkOrderItem[];
+  products: BulkOrderItem[];
   totalAmount: number;
   advancePaid: number;
   remainingAmount: number;

@@ -215,45 +215,7 @@ export default function App() {
     }
   };
 
-  // Bulk Order actions via Redux
-  const handleSaveBulkOrder = async (order: BulkOrder) => {
-    try {
-      const payload = {
-        ...order,
-        customer_name: order.customerName,
-        customer_phone: order.customerPhone,
-        customer_email: order.customerEmail,
-        delivery_date: order.deliveryDate,
-        delivery_time: order.deliveryTime,
-        delivery_address: order.deliveryAddress,
-        delivery_type: order.deliveryType,
-        special_instructions: order.specialInstructions,
-        total_amount: order.totalAmount,
-        advance_paid: order.advancePaid,
-        remaining_amount: order.remainingAmount,
-        items: order.items.map((it) => ({
-          product_id: it.productId,
-          product_name: it.productName,
-          unit: it.unit,
-          price: it.price,
-          quantity: it.quantity,
-          total: it.total,
-        })),
-      };
 
-      await dispatch(CreateBulkOrderAction(payload)).unwrap();
-      dispatch(FetchBulkOrdersAction({}));
-      dispatch(FetchDashboardAction({}));
-      setIsBulkOrderModalOpen(false);
-      addToast(
-        'Bulk Order Placed',
-        `Order for ${order.customerName} successfully created.`,
-        'success'
-      );
-    } catch (err: any) {
-      addToast('Error', err?.message || 'Failed to create bulk order', 'error');
-    }
-  };
 
   const handleUpdateBulkOrderStatus = async (orderId: string, newStatus: BulkOrderStatus) => {
     try {
@@ -421,8 +383,7 @@ export default function App() {
       <BulkOrderFormModal
         isOpen={isBulkOrderModalOpen}
         onClose={() => setIsBulkOrderModalOpen(false)}
-        products={products}
-        onSave={handleSaveBulkOrder}
+        
       />
 
       {/* Tax & Thermal Invoice Preview Modal */}
