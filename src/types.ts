@@ -72,7 +72,11 @@ export interface Invoice {
   status: 'Paid' | 'Refunded' | 'Cancelled';
 }
 
-export type BulkOrderStatus = 'Upcoming' | 'Preparing' | 'Ready' | 'Delivered' | 'Cancelled';
+export interface BulkOrderStatus {
+  id: number;
+  name: string;
+}
+
 
 export interface BulkOrderItem {
   productId: string;
@@ -97,7 +101,7 @@ export interface BulkOrder {
   totalAmount: number;
   advancePaid: number;
   remainingAmount: number;
-  status: BulkOrderStatus;
+  status: number;
   occasion: 'Wedding' | 'Birthday' | 'Festival' | 'Corporate Event' | 'Poojan / Religious' | 'Other';
   specialInstructions?: string;
   createdAt: string;

@@ -84,9 +84,6 @@ export const axiosFile = {
   updateBulkOrder: (id: string | number, payload: any) =>
     apiClient.put(`/bulk-orders/${id}`, payload),
 
-  updateBulkOrderStatus: (id: string | number, status: string) =>
-    apiClient.patch(`/bulk-orders/${id}/status`, { status }),
-
   // Inventory
   getInventoryLogs: (payload?: any) =>
     apiClient.get('/inventory/logs', { params: payload }),
@@ -112,6 +109,12 @@ export const axiosFile = {
 
   updateUnit: (id: string | number, payload: any) =>
     apiClient.put(`/units/${id}`, payload),
+
+  getBulkOrderStatuses: () =>
+  apiClient.get('/bulk-orders/status'),
+
+updateBulkOrderStatus: (id: string | number, status: number) =>
+  apiClient.patch(`/bulk-orders/${id}/status`, { status }),
 
   
 };

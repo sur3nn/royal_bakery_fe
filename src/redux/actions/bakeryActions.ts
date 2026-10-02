@@ -294,7 +294,7 @@ export const UpdateBulkOrderAction: any = createAsyncThunk(
 
 export const UpdateBulkOrderStatusAction: any = createAsyncThunk(
   'UpdateBulkOrderStatusAction',
-  async ({ id, status }: { id: string | number; status: string }, { rejectWithValue }) => {
+  async ({ id, status }: { id: string | number; status: number }, { rejectWithValue }) => {
     try {
       const response: any = await axiosFile.updateBulkOrderStatus(id, status);
       const rawData = response?.data?.data;
@@ -302,6 +302,20 @@ export const UpdateBulkOrderStatusAction: any = createAsyncThunk(
     } catch (error: any) {
       return rejectWithValue(
         error?.response?.data?.message || error?.response?.data || error?.message || 'Unable to update order status'
+      );
+    }
+  }
+);
+
+export const FetchBulkOrderStatusesAction: any = createAsyncThunk(
+  'FetchBulkOrderStatusesAction',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response: any = await axiosFile.getBulkOrderStatuses();
+      return response?.data?.data || [];
+    } catch (error: any) {
+      return rejectWithValue(
+        error?.response?.data?.message || error?.response?.data || error?.message || 'Unable to load bulk order statuses'
       );
     }
   }

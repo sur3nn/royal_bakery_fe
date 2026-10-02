@@ -9,13 +9,14 @@ import {
 } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 
-import { BulkOrder, Product } from '../types';
+import { BulkOrder, BulkOrderStatus, Product } from '../types';
 
 import {
   FetchProductsAction,
   CreateBulkOrderAction,
   FetchBulkOrdersAction,
   FetchDashboardAction,
+  FetchBulkOrderStatusesAction,
 } from '../redux/actions/bakeryActions';
 
 import { RootState } from '../redux/store';
@@ -68,11 +69,25 @@ export const BulkOrderFormModal: React.FC<BulkOrderFormModalProps> = ({
     ProductsLoad,
     ProductsError,
     BulkOrderActionLoad,
+    BulkOrderStatusesData,
   } = useSelector((state: RootState) => state.bakery);
 
   const products: Product[] = Array.isArray(ProductsData)
     ? ProductsData
     : [];
+
+  const bulkOrderStatuses: BulkOrderStatus[] = Array.isArray(BulkOrderStatusesData)
+    ? BulkOrderStatusesData
+    : [];
+
+  // The status ID (not the name) is what gets sent to the backend.
+  // Prefer the status named "Upcoming", otherwise fall back to the first one.
+  const defaultStatusId: number | null =
+    bulkOrderStatuses.find(
+      (status) => status.name.toLowerCase() === 'upcoming'
+    )?.id ??
+    bulkOrderStatuses[0]?.id ??
+    null;
 
   /* =======================================================
      CUSTOMER
@@ -113,6 +128,8 @@ export const BulkOrderFormModal: React.FC<BulkOrderFormModalProps> = ({
   const [advancePaid, setAdvancePaid] =
     useState<number>(0);
 
+  const [formError, setFormError] = useState<string>('');
+
   /* =======================================================
      ORDER ITEMS
   ======================================================= */
@@ -136,6 +153,7 @@ export const BulkOrderFormModal: React.FC<BulkOrderFormModalProps> = ({
     if (!isOpen) return;
 
     dispatch(FetchProductsAction({}));
+    dispatch(FetchBulkOrderStatusesAction());
   }, [isOpen, dispatch]);
 
   /* =======================================================
@@ -298,16 +316,30 @@ export const BulkOrderFormModal: React.FC<BulkOrderFormModalProps> = ({
     e: React.FormEvent
   ) => {
     e.preventDefault();
+    setFormError('');
 
     if (!customerName.trim()) {
+      setFormError('Customer name is required.');
       return;
     }
 
-    if (!customerPhone.trim()) {
+    if (!customerPhone.trim() || customerPhone.length !== 10) {
+      setFormError('Enter a valid 10-digit phone number.');
       return;
     }
 
     if (orderItems.length === 0) {
+      setFormError('Add at least one order item.');
+      return;
+    }
+
+    if (Number(advancePaid) > totalAmount) {
+      setFormError('Advance paid cannot exceed the total order amount.');
+      return;
+    }
+
+    if (defaultStatusId === null) {
+      setFormError('Order statuses are not loaded yet. Please try again.');
       return;
     }
 
@@ -317,11 +349,11 @@ export const BulkOrderFormModal: React.FC<BulkOrderFormModalProps> = ({
       =================================================== */
 
       const newOrder: BulkOrder = {
-        id: `bo-${Date.now()}`,
+        id: '',
 
-        orderNumber: `BO-${new Date().getFullYear()}-${Math.floor(
-          100 + Math.random() * 900
-        )}`,
+        // orderNumber is assigned by the backend (ORD-<timestamp>); empty string satisfies the type
+        orderNumber: '',
+
 
         customerName:
           customerName.trim(),
@@ -337,10 +369,7 @@ export const BulkOrderFormModal: React.FC<BulkOrderFormModalProps> = ({
         deliveryTime,
 
         deliveryAddress:
-          deliveryAddress.trim() ||
-          (deliveryType === 'Store Pickup'
-            ? t.addressDefaultPickup
-            : t.addressDefaultConfirm),
+          deliveryAddress.trim() ,
 
         deliveryType,
 
@@ -353,7 +382,7 @@ export const BulkOrderFormModal: React.FC<BulkOrderFormModalProps> = ({
 
         remainingAmount,
 
-        status: 'Upcoming',
+        status: defaultStatusId,
 
         occasion,
 
@@ -398,6 +427,7 @@ export const BulkOrderFormModal: React.FC<BulkOrderFormModalProps> = ({
       =================================================== */
 
       resetForm();
+      setFormError('');
 
       /* ===================================================
          CLOSE MODAL
@@ -543,8 +573,9 @@ export const BulkOrderFormModal: React.FC<BulkOrderFormModalProps> = ({
                   required
                   placeholder={t.phonePlaceholder}
                   value={customerPhone}
+                  maxLength={10}
                   onChange={(e) =>
-                    setCustomerPhone(e.target.value)
+                    setCustomerPhone(e.target.value.replace(/\D/g, '').slice(0, 10))
                   }
                   className="w-full px-4 py-3 bg-white border-2 border-[#EDE2E5] rounded-xl text-sm sm:text-base text-[#29252A] focus:border-[#C94F6D] focus:ring-4 focus:ring-[#FCE7EC] outline-none"
                 />
@@ -1048,7 +1079,13 @@ export const BulkOrderFormModal: React.FC<BulkOrderFormModalProps> = ({
               FOOTER
           ================================================== */}
 
-          <div className="pt-5 border-t-2 border-[#EDE2E5] flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-3">
+          {formError && (
+            <p className="text-xs font-semibold text-[#D9535F] bg-[#FFF0F3] border border-[#D9535F]/30 rounded-xl px-3 py-2">
+              {formError}
+            </p>
+          )}
+
+          <div className="pt-4 border-t border-[#EDE2E5] flex items-center justify-end gap-3">
 
             <button
               type="button"
@@ -1065,6 +1102,7 @@ export const BulkOrderFormModal: React.FC<BulkOrderFormModalProps> = ({
                 ProductsLoad ||
                 products.length === 0 ||
                 orderItems.length === 0 ||
+                defaultStatusId === null ||
                 BulkOrderActionLoad
               }
               className="px-6 py-3.5 rounded-xl bg-[#C94F6D] hover:bg-[#A83D58] text-white text-sm font-bold shadow-sm shadow-[#C94F6D]/25 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"

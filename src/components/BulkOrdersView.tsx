@@ -1,15 +1,16 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { 
-  Search, 
-  Plus, 
-  ShoppingBag, 
-  Calendar, 
-  Clock, 
-  Phone, 
-  CheckCircle2, 
-  Truck, 
-  ChefHat, 
-  PackageCheck, 
+import { formatDate, formatTime, formatDateTime } from '../utils/date_format';
+import {
+  Search,
+  Plus,
+  ShoppingBag,
+  Calendar,
+  Clock,
+  Phone,
+  CheckCircle2,
+  Truck,
+  ChefHat,
+  PackageCheck,
   XCircle,
   AlertCircle,
   Eye,
@@ -19,13 +20,17 @@ import {
 } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../redux/store';
-import { FetchBulkOrdersAction } from '../redux/actions/bakeryActions';
+import { FetchBulkOrdersAction, FetchBulkOrderStatusesAction } from '../redux/actions/bakeryActions';
 import { BulkOrder, BulkOrderStatus } from '../types';
+
+// The order's status is the status ID. Supports both `status` and `status_id` from the backend.
+const getOrderStatusId = (order: any): number =>
+  Number(order?.status ?? order?.status_id);
 
 interface BulkOrdersViewProps {
   bulkOrders?: BulkOrder[];
   onCreateOrder: () => void;
-  onUpdateStatus: (orderId: string, newStatus: BulkOrderStatus) => void;
+  onUpdateStatus: (orderId: string, newStatus: number) => void;
 }
 
 export const BulkOrdersView: React.FC<BulkOrdersViewProps> = ({
@@ -34,30 +39,34 @@ export const BulkOrdersView: React.FC<BulkOrdersViewProps> = ({
   onUpdateStatus,
 }) => {
   const dispatch = useDispatch<AppDispatch>();
-  const { BulkOrdersData, BulkOrdersLoad, BulkOrdersError } = useSelector((state: RootState) => state.bakery);
+  const { BulkOrdersData, BulkOrdersLoad, BulkOrdersError, BulkOrderStatusesData } = useSelector((state: RootState) => state.bakery);
+
+  const bulkOrderStatuses: BulkOrderStatus[] = Array.isArray(BulkOrderStatusesData)
+    ? BulkOrderStatusesData
+    : [];
 
   useEffect(() => {
     dispatch(FetchBulkOrdersAction({}));
+    dispatch(FetchBulkOrderStatusesAction());
   }, [dispatch]);
 
   const [search, setSearch] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState<string>('All');
+  // null = All, otherwise the status ID
+  const [selectedStatus, setSelectedStatus] = useState<number | null>(null);
   const [selectedOrderDetails, setSelectedOrderDetails] = useState<BulkOrder | null>(null);
 
-  const statuses: Array<BulkOrderStatus | 'All'> = [
-    'All',
-    'Upcoming',
-    'Preparing',
-    'Ready',
-    'Delivered',
-    'Cancelled',
+  const statusFilters: BulkOrderStatus[] = [
+    { id: 0, name: 'All' },
+    ...bulkOrderStatuses,
   ];
 
   const effectiveOrders: BulkOrder[] = (BulkOrdersData?.length ? BulkOrdersData : initialOrders) as BulkOrder[];
 
   const filteredOrders = useMemo(() => {
     return effectiveOrders.filter((order) => {
-      const matchStatus = selectedStatus === 'All' || order.status === selectedStatus;
+      const matchStatus =
+        selectedStatus === null ||
+        getOrderStatusId(order) === selectedStatus;
       const orderNum = order.orderNumber || (order as any).order_number || '';
       const custName = order.customerName || (order as any).customer_name || '';
       const custPhone = order.customerPhone || (order as any).customer_phone || '';
@@ -72,41 +81,53 @@ export const BulkOrdersView: React.FC<BulkOrdersViewProps> = ({
     });
   }, [effectiveOrders, selectedStatus, search]);
 
-  const getStatusBadge = (status: BulkOrderStatus) => {
-    switch (status) {
+  // Status name is used for display/styling only; the order stores the status ID.
+  const getStatusBadge = (order: BulkOrder) => {
+    const statusId = getOrderStatusId(order);
+    const statusName =
+      bulkOrderStatuses.find((status) => status.id === statusId)?.name || 'Unknown';
+
+    switch (statusName) {
       case 'Preparing':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-[#FFF3D6] text-[#D9A441] border border-[#D9A441]/30">
             <ChefHat className="w-3.5 h-3.5" />
-            <span>Preparing</span>
+            <span>{statusName}</span>
           </span>
         );
       case 'Ready':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-[#EBF3FB] text-[#4F86C6] border border-[#4F86C6]/30">
             <PackageCheck className="w-3.5 h-3.5" />
-            <span>Ready for Pickup</span>
+            <span>{statusName}</span>
           </span>
         );
       case 'Delivered':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-[#EAF7EE] text-[#3FA56B] border border-[#3FA56B]/30">
             <CheckCircle2 className="w-3.5 h-3.5" />
-            <span>Delivered</span>
+            <span>{statusName}</span>
           </span>
         );
       case 'Cancelled':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-[#FFF0F3] text-[#D9535F] border border-[#D9535F]/30">
             <XCircle className="w-3.5 h-3.5" />
-            <span>Cancelled</span>
+            <span>{statusName}</span>
+          </span>
+        );
+      case 'Upcoming':
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-[#FFF0F3] text-[#C94F6D] border border-[#C94F6D]/30">
+            <Clock className="w-3.5 h-3.5" />
+            <span>{statusName}</span>
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-[#FFF0F3] text-[#C94F6D] border border-[#C94F6D]/30">
-            <Clock className="w-3.5 h-3.5" />
-            <span>Upcoming</span>
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-[#F4F0F1] text-[#756B70] border border-[#756B70]/30">
+            <AlertCircle className="w-3.5 h-3.5" />
+            <span>{statusName}</span>
           </span>
         );
     }
@@ -150,17 +171,16 @@ export const BulkOrdersView: React.FC<BulkOrdersViewProps> = ({
 
           {/* Status filter tabs */}
           <div className="flex items-center gap-1 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
-            {statuses.map((st) => (
+            {statusFilters.map((status) => (
               <button
-                key={st}
-                onClick={() => setSelectedStatus(st)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                  selectedStatus === st
+                key={status.id}
+                onClick={() => setSelectedStatus(status.id === 0 ? null : status.id)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${(selectedStatus ?? 0) === status.id
                     ? 'bg-[#29252A] text-white'
                     : 'bg-[#FFF9F5] text-[#756B70] hover:text-[#29252A] border border-[#EDE2E5]'
-                }`}
+                  }`}
               >
-                {st}
+                {status.name}
               </button>
             ))}
           </div>
@@ -198,7 +218,7 @@ export const BulkOrdersView: React.FC<BulkOrdersViewProps> = ({
           <ShoppingBag className="w-12 h-12 text-[#C94F6D]/40 mx-auto" />
           <h3 className="text-base font-bold text-[#29252A]">No bulk orders found</h3>
           <p className="text-xs text-[#756B70] max-w-sm mx-auto">
-            {search || selectedStatus !== 'All'
+            {search || selectedStatus !== null
               ? 'Try modifying your search query or status filter.'
               : 'Add customer advance orders for weddings, celebrations, and festive parties.'}
           </p>
@@ -238,21 +258,21 @@ export const BulkOrdersView: React.FC<BulkOrdersViewProps> = ({
                   const advPaid = Number(order.advancePaid ?? (order as any).advance_paid ?? 0);
                   const itemsList = order.products || [];
 
-                const formattedDate = delDate
-                  ? new Date(delDate).toLocaleDateString('en-IN', {
+                  const formattedDate = delDate
+                    ? new Date(delDate).toLocaleDateString('en-IN', {
                       day: '2-digit',
                       month: 'short',
                       year: 'numeric',
                     })
-                  : '-';
+                    : '-';
 
-                const formattedTime = delTime
-                  ? new Date(`1970-01-01T${delTime}`).toLocaleTimeString('en-IN', {
+                  const formattedTime = delTime
+                    ? new Date(`1970-01-01T${delTime}`).toLocaleTimeString('en-IN', {
                       hour: 'numeric',
                       minute: '2-digit',
                       hour12: true,
                     })
-                  : '-';
+                    : '-';
                   return (
                     <tr key={order.id} className="hover:bg-[#FFF9F5]/60 transition-colors">
                       <td className="py-3.5 px-4">
@@ -310,20 +330,25 @@ export const BulkOrdersView: React.FC<BulkOrdersViewProps> = ({
                       </td>
 
                       <td className="py-3.5 px-4 text-center">
-                        {getStatusBadge(order.status)}
+                        {getStatusBadge(order)}
                       </td>
 
                       <td className="py-3.5 px-4 text-center">
                         <select
-                          value={order.status}
-                          onChange={(e) => onUpdateStatus(order.id, e.target.value as BulkOrderStatus)}
+                          value={Number.isNaN(getOrderStatusId(order)) ? '' : getOrderStatusId(order)}
+                          onChange={(e) => onUpdateStatus(order.id, Number(e.target.value))}
                           className="px-2 py-1 bg-white border border-[#EDE2E5] rounded-lg text-xs font-semibold text-[#29252A] focus:border-[#C94F6D] outline-none cursor-pointer"
                         >
-                          <option value="Upcoming">Upcoming</option>
-                          <option value="Preparing">Preparing</option>
-                          <option value="Ready">Ready</option>
-                          <option value="Delivered">Delivered</option>
-                          <option value="Cancelled">Cancelled</option>
+                          {Number.isNaN(getOrderStatusId(order)) && (
+                            <option value="" disabled>
+                              Select status
+                            </option>
+                          )}
+                          {bulkOrderStatuses.map((status) => (
+                            <option key={status.id} value={status.id}>
+                              {status.name}
+                            </option>
+                          ))}
                         </select>
                       </td>
 
@@ -357,7 +382,7 @@ export const BulkOrdersView: React.FC<BulkOrdersViewProps> = ({
                 </h3>
                 <p className="text-xs text-[#756B70]">
                   Occasion: {selectedOrderDetails.occasion} • Placed:{' '}
-                  {new Date(selectedOrderDetails.createdAt).toLocaleDateString()}
+                  {formatDateTime((selectedOrderDetails as any).created_at)}
                 </p>
               </div>
               <button
@@ -378,8 +403,14 @@ export const BulkOrdersView: React.FC<BulkOrdersViewProps> = ({
               <p>
                 <strong className="text-[#29252A]">Delivery Mode:</strong>{' '}
                 {selectedOrderDetails.deliveryType || (selectedOrderDetails as any).delivery_type} on{' '}
-                {selectedOrderDetails.deliveryDate || (selectedOrderDetails as any).delivery_date} at{' '}
-                {selectedOrderDetails.deliveryTime || (selectedOrderDetails as any).delivery_time}
+                {formatDate(
+                  selectedOrderDetails.deliveryDate ||
+                  (selectedOrderDetails as any).delivery_date
+                )}{' '} at{' '}
+                {formatTime(
+                  selectedOrderDetails.deliveryTime ||
+                  (selectedOrderDetails as any).delivery_time
+                )}
               </p>
               <p>
                 <strong className="text-[#29252A]">Address:</strong>{' '}

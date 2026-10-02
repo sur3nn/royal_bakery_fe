@@ -20,6 +20,7 @@ import {
   CreateBulkOrderAction,
   UpdateBulkOrderAction,
   UpdateBulkOrderStatusAction,
+  FetchBulkOrderStatusesAction,
   FetchInventoryLogsAction,
   FetchLowStockAction,
   AdjustInventoryAction,
@@ -28,6 +29,7 @@ import {
   FetchUnitsAction,
 } from '../actions/bakeryActions';
 import { mapApiProductToProduct, mapApiSaleToInvoice } from '../../utils/mappers';
+import { BulkOrderStatus } from '../../types';
 
 export interface BakeryState {
   DashboardData: any;
@@ -53,6 +55,10 @@ export interface BakeryState {
   BulkOrdersData: any[];
   BulkOrdersLoad: boolean;
   BulkOrdersError: any;
+
+  BulkOrderStatusesData: BulkOrderStatus[];
+  BulkOrderStatusesLoad: boolean;
+  BulkOrderStatusesError: any;
 
   InventoryData: any[];
   InventoryLoad: boolean;
@@ -102,6 +108,10 @@ const initialState: BakeryState = {
   BulkOrdersData: [],
   BulkOrdersLoad: false,
   BulkOrdersError: null,
+
+  BulkOrderStatusesData: [],
+  BulkOrderStatusesLoad: false,
+  BulkOrderStatusesError: null,
 
   InventoryData: [],
   InventoryLoad: false,
@@ -343,6 +353,18 @@ export const bakerySlice = createSlice({
             state.BulkOrdersData[idx] = action.payload;
           }
         }
+      })
+      .addCase(FetchBulkOrderStatusesAction.pending, (state) => {
+        state.BulkOrderStatusesLoad = true;
+        state.BulkOrderStatusesError = null;
+      })
+      .addCase(FetchBulkOrderStatusesAction.fulfilled, (state, action) => {
+        state.BulkOrderStatusesLoad = false;
+        state.BulkOrderStatusesData = Array.isArray(action.payload) ? action.payload : [];
+      })
+      .addCase(FetchBulkOrderStatusesAction.rejected, (state, action) => {
+        state.BulkOrderStatusesLoad = false;
+        state.BulkOrderStatusesError = action.payload;
       });
 
     // 7. Inventory
