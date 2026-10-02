@@ -236,8 +236,23 @@ export const BulkOrdersView: React.FC<BulkOrdersViewProps> = ({
                   const totAmt = Number(order.totalAmount ?? (order as any).total_amount ?? 0);
                   const remAmt = Number(order.remainingAmount ?? (order as any).remaining_amount ?? 0);
                   const advPaid = Number(order.advancePaid ?? (order as any).advance_paid ?? 0);
-                  const itemsList = order.items || [];
+                  const itemsList = order.products || [];
 
+                const formattedDate = delDate
+                  ? new Date(delDate).toLocaleDateString('en-IN', {
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric',
+                    })
+                  : '-';
+
+                const formattedTime = delTime
+                  ? new Date(`1970-01-01T${delTime}`).toLocaleTimeString('en-IN', {
+                      hour: 'numeric',
+                      minute: '2-digit',
+                      hour12: true,
+                    })
+                  : '-';
                   return (
                     <tr key={order.id} className="hover:bg-[#FFF9F5]/60 transition-colors">
                       <td className="py-3.5 px-4">
@@ -268,11 +283,11 @@ export const BulkOrdersView: React.FC<BulkOrdersViewProps> = ({
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-1.5 text-xs font-semibold text-[#29252A]">
                           <Calendar className="w-3.5 h-3.5 text-[#C94F6D]" />
-                          <span>{delDate}</span>
+                          <span>{formattedDate}</span>
                         </div>
                         <div className="flex items-center gap-1.5 text-[11px] text-[#756B70] mt-0.5">
                           <Clock className="w-3 h-3 text-[#756B70]" />
-                          <span>{delTime}</span>
+                          <span>{formattedTime}</span>
                         </div>
                       </td>
 
@@ -384,7 +399,7 @@ export const BulkOrdersView: React.FC<BulkOrdersViewProps> = ({
                 Ordered Sweets & Confectionery
               </h4>
               <div className="divide-y divide-[#EDE2E5] border border-[#EDE2E5] rounded-xl overflow-hidden text-xs max-h-48 overflow-y-auto">
-                {(selectedOrderDetails.items || []).map((it: any, idx) => (
+                {(selectedOrderDetails.products || []).map((it: any, idx) => (
                   <div key={idx} className="p-2.5 flex justify-between items-center bg-white">
                     <div>
                       <p className="font-bold text-[#29252A]">{it.productName || it.product_name}</p>
