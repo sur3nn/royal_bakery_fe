@@ -19,6 +19,7 @@ import {
 } from '../redux/actions/bakeryActions';
 
 import { RootState } from '../redux/store';
+import { bulkOrderLabels as t } from '../components/Bakerylabels';
 
 interface BulkOrderFormModalProps {
   isOpen: boolean;
@@ -338,8 +339,8 @@ export const BulkOrderFormModal: React.FC<BulkOrderFormModalProps> = ({
         deliveryAddress:
           deliveryAddress.trim() ||
           (deliveryType === 'Store Pickup'
-            ? 'Counter Pickup (Royal Sweets Store)'
-            : 'To be confirmed'),
+            ? t.addressDefaultPickup
+            : t.addressDefaultConfirm),
 
         deliveryType,
 
@@ -441,32 +442,32 @@ export const BulkOrderFormModal: React.FC<BulkOrderFormModalProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
 
-      <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl border border-[#EDE2E5] overflow-hidden animate-in fade-in zoom-in-95">
+      <div className="bg-white rounded-2xl w-full max-w-3xl shadow-2xl border-2 border-[#EDE2E5] overflow-hidden animate-in fade-in zoom-in-95">
 
         {/* =================================================
             HEADER
         ================================================== */}
 
-        <div className="px-6 py-4 border-b border-[#EDE2E5] flex items-center justify-between bg-gradient-to-r from-white to-[#FFF9F5]">
+        <div className="px-6 py-5 border-b-2 border-[#EDE2E5] flex items-center justify-between bg-gradient-to-r from-white to-[#FFF9F5]">
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-3">
 
-            <div className="w-9 h-9 rounded-xl bg-[#FFF0F3] text-[#C94F6D] flex items-center justify-center">
+            <div className="w-12 h-12 rounded-xl bg-[#FFF0F3] text-[#C94F6D] flex items-center justify-center shrink-0">
 
-              <ShoppingBag className="w-5 h-5" />
+              <ShoppingBag className="w-6 h-6" />
 
             </div>
 
             <div>
 
-              <h3 className="font-bold text-base text-[#29252A]">
-                Create Bulk / Catering Order
+              <h3 className="font-bold text-xl text-[#29252A]">
+                {t.modalTitle}
               </h3>
 
-              <p className="text-xs text-[#756B70]">
-                Record weddings, festive gift packs, and bulk event sweets
+              <p className="text-sm text-[#756B70] mt-0.5">
+                {t.modalSubtitle}
               </p>
 
             </div>
@@ -477,9 +478,10 @@ export const BulkOrderFormModal: React.FC<BulkOrderFormModalProps> = ({
             type="button"
             onClick={handleClose}
             disabled={BulkOrderActionLoad}
-            className="p-1.5 rounded-lg text-[#756B70] hover:bg-[#FFF4F6] hover:text-[#C94F6D] transition-colors cursor-pointer disabled:opacity-50"
+            aria-label={t.cancel}
+            className="p-2.5 rounded-xl text-[#756B70] hover:bg-[#FFF4F6] hover:text-[#C94F6D] transition-colors cursor-pointer disabled:opacity-50 shrink-0"
           >
-            <X className="w-5 h-5" />
+            <X className="w-6 h-6" />
           </button>
 
         </div>
@@ -490,79 +492,79 @@ export const BulkOrderFormModal: React.FC<BulkOrderFormModalProps> = ({
 
         <form
           onSubmit={handleSubmit}
-          className="p-6 space-y-5 max-h-[78vh] overflow-y-auto"
+          className="p-6 space-y-7 max-h-[78vh] overflow-y-auto"
         >
 
           {/* =================================================
               CUSTOMER INFORMATION
           ================================================== */}
 
-          <div className="space-y-3">
+          <div className="space-y-4">
 
-            <h4 className="text-xs font-bold text-[#C94F6D] uppercase tracking-wider flex items-center gap-1.5">
+            <h4 className="text-sm font-bold text-[#C94F6D] uppercase tracking-wider flex items-center gap-2">
 
-              <User className="w-3.5 h-3.5" />
+              <User className="w-4 h-4" />
 
               <span>
-                Customer Information
+                {t.customerInfoHeading}
               </span>
 
             </h4>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 
               <div>
 
-                <label className="text-xs font-bold text-[#29252A] block mb-1">
-                  Customer Name *
+                <label className="text-sm font-bold text-[#29252A] block mb-2">
+                  {t.customerName}
                 </label>
 
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Ramesh Chandra"
+                  placeholder={t.customerNamePlaceholder}
                   value={customerName}
                   onChange={(e) =>
                     setCustomerName(e.target.value)
                   }
-                  className="w-full px-3 py-1.5 bg-white border border-[#EDE2E5] rounded-xl text-xs text-[#29252A] focus:border-[#C94F6D] outline-none"
+                  className="w-full px-4 py-3 bg-white border-2 border-[#EDE2E5] rounded-xl text-sm sm:text-base text-[#29252A] focus:border-[#C94F6D] focus:ring-4 focus:ring-[#FCE7EC] outline-none"
                 />
 
               </div>
 
               <div>
 
-                <label className="text-xs font-bold text-[#29252A] block mb-1">
-                  Phone Number *
+                <label className="text-sm font-bold text-[#29252A] block mb-2">
+                  {t.phoneNumber}
                 </label>
 
                 <input
                   type="tel"
                   required
-                  placeholder="98401 23456"
+                  placeholder={t.phonePlaceholder}
                   value={customerPhone}
                   onChange={(e) =>
                     setCustomerPhone(e.target.value)
                   }
-                  className="w-full px-3 py-1.5 bg-white border border-[#EDE2E5] rounded-xl text-xs text-[#29252A] focus:border-[#C94F6D] outline-none"
+                  className="w-full px-4 py-3 bg-white border-2 border-[#EDE2E5] rounded-xl text-sm sm:text-base text-[#29252A] focus:border-[#C94F6D] focus:ring-4 focus:ring-[#FCE7EC] outline-none"
                 />
 
               </div>
 
               <div>
 
-                <label className="text-xs font-bold text-[#29252A] block mb-1">
-                  Email (Optional)
+                <label className="text-sm font-bold text-[#29252A] block mb-2">
+                  {t.emailOptional}
                 </label>
 
                 <input
                   type="email"
-                  placeholder="name@gmail.com"
+                  placeholder={t.emailPlaceholder}
                   value={customerEmail}
                   onChange={(e) =>
                     setCustomerEmail(e.target.value)
                   }
-                  className="w-full px-3 py-1.5 bg-white border border-[#EDE2E5] rounded-xl text-xs text-[#29252A] focus:border-[#C94F6D] outline-none"
+                  className="w-full px-4 py-3 bg-white border-2 border-[#EDE2E5] rounded-xl text-sm sm:text-base text-[#29252A] focus:border-[#C94F6D] focus:ring-4 focus:ring-[#FCE7EC] outline-none"
                 />
 
               </div>
@@ -575,26 +577,26 @@ export const BulkOrderFormModal: React.FC<BulkOrderFormModalProps> = ({
               DELIVERY & SCHEDULE
           ================================================== */}
 
-          <div className="space-y-3 pt-3 border-t border-[#EDE2E5]">
+          <div className="space-y-4 pt-4 border-t-2 border-[#EDE2E5]">
 
-            <h4 className="text-xs font-bold text-[#C94F6D] uppercase tracking-wider flex items-center gap-1.5">
+            <h4 className="text-sm font-bold text-[#C94F6D] uppercase tracking-wider flex items-center gap-2">
 
-              <Clock className="w-3.5 h-3.5" />
+              <Clock className="w-4 h-4" />
 
               <span>
-                Delivery & Schedule
+                {t.deliveryScheduleHeading}
               </span>
 
             </h4>
 
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 
               {/* DATE */}
 
               <div>
 
-                <label className="text-xs font-bold text-[#29252A] block mb-1">
-                  Delivery Date *
+                <label className="text-sm font-bold text-[#29252A] block mb-2">
+                  {t.deliveryDate}
                 </label>
 
                 <input
@@ -604,7 +606,7 @@ export const BulkOrderFormModal: React.FC<BulkOrderFormModalProps> = ({
                   onChange={(e) =>
                     setDeliveryDate(e.target.value)
                   }
-                  className="w-full px-3 py-1.5 bg-white border border-[#EDE2E5] rounded-xl text-xs text-[#29252A] focus:border-[#C94F6D] outline-none"
+                  className="w-full px-4 py-3 bg-white border-2 border-[#EDE2E5] rounded-xl text-sm sm:text-base text-[#29252A] focus:border-[#C94F6D] focus:ring-4 focus:ring-[#FCE7EC] outline-none"
                 />
 
               </div>
@@ -613,8 +615,8 @@ export const BulkOrderFormModal: React.FC<BulkOrderFormModalProps> = ({
 
               <div>
 
-                <label className="text-xs font-bold text-[#29252A] block mb-1">
-                  Delivery Time *
+                <label className="text-sm font-bold text-[#29252A] block mb-2">
+                  {t.deliveryTime}
                 </label>
 
                 <input
@@ -624,7 +626,7 @@ export const BulkOrderFormModal: React.FC<BulkOrderFormModalProps> = ({
                   onChange={(e) =>
                     setDeliveryTime(e.target.value)
                   }
-                  className="w-full px-3 py-1.5 bg-white border border-[#EDE2E5] rounded-xl text-xs text-[#29252A] focus:border-[#C94F6D] outline-none"
+                  className="w-full px-4 py-3 bg-white border-2 border-[#EDE2E5] rounded-xl text-sm sm:text-base text-[#29252A] focus:border-[#C94F6D] focus:ring-4 focus:ring-[#FCE7EC] outline-none"
                 />
 
               </div>
@@ -633,8 +635,8 @@ export const BulkOrderFormModal: React.FC<BulkOrderFormModalProps> = ({
 
               <div>
 
-                <label className="text-xs font-bold text-[#29252A] block mb-1">
-                  Delivery Mode
+                <label className="text-sm font-bold text-[#29252A] block mb-2">
+                  {t.deliveryMode}
                 </label>
 
                 <select
@@ -646,15 +648,15 @@ export const BulkOrderFormModal: React.FC<BulkOrderFormModalProps> = ({
                         | 'Store Pickup'
                     )
                   }
-                  className="w-full px-3 py-1.5 bg-white border border-[#EDE2E5] rounded-xl text-xs text-[#29252A] focus:border-[#C94F6D] outline-none"
+                  className="w-full px-4 py-3 bg-white border-2 border-[#EDE2E5] rounded-xl text-sm sm:text-base text-[#29252A] focus:border-[#C94F6D] focus:ring-4 focus:ring-[#FCE7EC] outline-none cursor-pointer"
                 >
 
                   <option value="Home Delivery">
-                    Doorstep Delivery
+                    {t.homeDelivery}
                   </option>
 
                   <option value="Store Pickup">
-                    Store Counter Pickup
+                    {t.storePickup}
                   </option>
 
                 </select>
@@ -665,8 +667,8 @@ export const BulkOrderFormModal: React.FC<BulkOrderFormModalProps> = ({
 
               <div>
 
-                <label className="text-xs font-bold text-[#29252A] block mb-1">
-                  Occasion
+                <label className="text-sm font-bold text-[#29252A] block mb-2">
+                  {t.occasion}
                 </label>
 
                 <select
@@ -676,31 +678,31 @@ export const BulkOrderFormModal: React.FC<BulkOrderFormModalProps> = ({
                       e.target.value as BulkOrder['occasion']
                     )
                   }
-                  className="w-full px-3 py-1.5 bg-white border border-[#EDE2E5] rounded-xl text-xs text-[#29252A] focus:border-[#C94F6D] outline-none"
+                  className="w-full px-4 py-3 bg-white border-2 border-[#EDE2E5] rounded-xl text-sm sm:text-base text-[#29252A] focus:border-[#C94F6D] focus:ring-4 focus:ring-[#FCE7EC] outline-none cursor-pointer"
                 >
 
                   <option value="Wedding">
-                    Wedding
+                    {t.occasionWedding}
                   </option>
 
                   <option value="Birthday">
-                    Birthday Party
+                    {t.occasionBirthday}
                   </option>
 
                   <option value="Festival">
-                    Festival (Diwali/Pongal)
+                    {t.occasionFestival}
                   </option>
 
                   <option value="Corporate Event">
-                    Corporate Event
+                    {t.occasionCorporate}
                   </option>
 
                   <option value="Poojan / Religious">
-                    Poojan / Religious
+                    {t.occasionReligious}
                   </option>
 
                   <option value="Other">
-                    Other Occasion
+                    {t.occasionOther}
                   </option>
 
                 </select>
@@ -713,8 +715,8 @@ export const BulkOrderFormModal: React.FC<BulkOrderFormModalProps> = ({
 
             <div>
 
-              <label className="text-xs font-bold text-[#29252A] block mb-1">
-                Delivery Venue / Address
+              <label className="text-sm font-bold text-[#29252A] block mb-2">
+                {t.deliveryAddress}
               </label>
 
               <input
@@ -723,8 +725,8 @@ export const BulkOrderFormModal: React.FC<BulkOrderFormModalProps> = ({
                 onChange={(e) =>
                   setDeliveryAddress(e.target.value)
                 }
-                placeholder="Hall name, door no, street name, area..."
-                className="w-full px-3 py-1.5 bg-white border border-[#EDE2E5] rounded-xl text-xs text-[#29252A] focus:border-[#C94F6D] outline-none"
+                placeholder={t.deliveryAddressPlaceholder}
+                className="w-full px-4 py-3 bg-white border-2 border-[#EDE2E5] rounded-xl text-sm sm:text-base text-[#29252A] focus:border-[#C94F6D] focus:ring-4 focus:ring-[#FCE7EC] outline-none"
               />
 
             </div>
@@ -735,16 +737,16 @@ export const BulkOrderFormModal: React.FC<BulkOrderFormModalProps> = ({
               BULK ORDER ITEMS
           ================================================== */}
 
-          <div className="space-y-3 pt-3 border-t border-[#EDE2E5]">
+          <div className="space-y-4 pt-4 border-t-2 border-[#EDE2E5]">
 
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
 
-              <h4 className="text-xs font-bold text-[#C94F6D] uppercase tracking-wider flex items-center gap-1.5">
+              <h4 className="text-sm font-bold text-[#C94F6D] uppercase tracking-wider flex items-center gap-2">
 
-                <ShoppingBag className="w-3.5 h-3.5" />
+                <ShoppingBag className="w-4 h-4" />
 
                 <span>
-                  Bulk Order Items
+                  {t.orderItemsHeading}
                 </span>
 
               </h4>
@@ -757,13 +759,13 @@ export const BulkOrderFormModal: React.FC<BulkOrderFormModalProps> = ({
                   products.length === 0 ||
                   BulkOrderActionLoad
                 }
-                className="text-xs font-bold text-[#C94F6D] hover:text-[#A83D58] flex items-center gap-1 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                className="text-sm font-bold text-[#C94F6D] hover:text-[#A83D58] flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed px-3 py-2 rounded-lg hover:bg-[#FFF0F3] transition-colors"
               >
 
-                <Plus className="w-3.5 h-3.5" />
+                <Plus className="w-4 h-4" />
 
                 <span>
-                  Add Item Row
+                  {t.addItemRow}
                 </span>
 
               </button>
@@ -774,8 +776,8 @@ export const BulkOrderFormModal: React.FC<BulkOrderFormModalProps> = ({
 
             {ProductsLoad && (
 
-              <div className="py-5 text-center text-xs text-[#756B70]">
-                Loading products...
+              <div className="py-6 text-center text-sm text-[#756B70]">
+                {t.loadingProducts}
               </div>
 
             )}
@@ -785,8 +787,8 @@ export const BulkOrderFormModal: React.FC<BulkOrderFormModalProps> = ({
             {!ProductsLoad &&
               ProductsError && (
 
-                <div className="py-5 text-center text-xs text-red-500">
-                  Unable to load products.
+                <div className="py-6 text-center text-sm text-red-500">
+                  {t.errorLoadingProducts}
                 </div>
 
               )}
@@ -797,8 +799,8 @@ export const BulkOrderFormModal: React.FC<BulkOrderFormModalProps> = ({
               !ProductsError &&
               products.length === 0 && (
 
-                <div className="py-5 text-center text-xs text-[#756B70]">
-                  No products available.
+                <div className="py-6 text-center text-sm text-[#756B70]">
+                  {t.noProductsAvailable}
                 </div>
 
               )}
@@ -808,14 +810,14 @@ export const BulkOrderFormModal: React.FC<BulkOrderFormModalProps> = ({
             {!ProductsLoad &&
               products.length > 0 && (
 
-                <div className="space-y-2">
+                <div className="space-y-3">
 
                   {orderItems.map(
                     (item, index) => (
 
                       <div
                         key={`${item.productId}-${index}`}
-                        className="flex items-center gap-2 p-2 rounded-xl bg-[#FFF9F5] border border-[#EDE2E5]"
+                        className="flex flex-col sm:flex-row sm:items-center gap-2.5 p-3 rounded-xl bg-[#FFF9F5] border-2 border-[#EDE2E5]"
                       >
 
                         {/* PRODUCT */}
@@ -832,7 +834,7 @@ export const BulkOrderFormModal: React.FC<BulkOrderFormModalProps> = ({
                           disabled={
                             BulkOrderActionLoad
                           }
-                          className="flex-1 px-2.5 py-1.5 bg-white border border-[#EDE2E5] rounded-lg text-xs font-semibold text-[#29252A] outline-none disabled:opacity-60"
+                          className="flex-1 px-3.5 py-2.5 bg-white border-2 border-[#EDE2E5] rounded-lg text-sm font-semibold text-[#29252A] outline-none disabled:opacity-60 cursor-pointer"
                         >
 
                           {products.map(
@@ -863,7 +865,7 @@ export const BulkOrderFormModal: React.FC<BulkOrderFormModalProps> = ({
 
                         {/* QUANTITY */}
 
-                        <div className="flex items-center gap-1 w-24">
+                        <div className="flex items-center gap-2 w-full sm:w-28">
 
                           <input
                             type="number"
@@ -881,10 +883,10 @@ export const BulkOrderFormModal: React.FC<BulkOrderFormModalProps> = ({
                                 )
                               )
                             }
-                            className="w-16 px-2 py-1 bg-white border border-[#EDE2E5] rounded-lg text-xs font-bold text-[#29252A] text-center disabled:opacity-60"
+                            className="w-20 px-2.5 py-2 bg-white border-2 border-[#EDE2E5] rounded-lg text-sm font-bold text-[#29252A] text-center disabled:opacity-60"
                           />
 
-                          <span className="text-xs text-[#756B70]">
+                          <span className="text-sm text-[#756B70]">
                             {item.unit}
                           </span>
 
@@ -892,9 +894,9 @@ export const BulkOrderFormModal: React.FC<BulkOrderFormModalProps> = ({
 
                         {/* TOTAL */}
 
-                        <div className="w-24 text-right">
+                        <div className="w-full sm:w-28 text-right">
 
-                          <span className="text-xs font-bold text-[#29252A]">
+                          <span className="text-sm font-bold text-[#29252A]">
 
                             ₹
                             {item.total.toLocaleString()}
@@ -916,14 +918,14 @@ export const BulkOrderFormModal: React.FC<BulkOrderFormModalProps> = ({
                               index
                             )
                           }
-                          className={`p-1.5 text-[#756B70] hover:text-[#D9535F] cursor-pointer ${
+                          className={`p-2.5 rounded-lg text-[#756B70] hover:text-[#D9535F] hover:bg-white cursor-pointer self-end sm:self-auto ${
                             orderItems.length <= 1
                               ? 'opacity-30 cursor-not-allowed'
                               : ''
                           }`}
                         >
 
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-5 h-5" />
 
                         </button>
 
@@ -942,20 +944,20 @@ export const BulkOrderFormModal: React.FC<BulkOrderFormModalProps> = ({
               PAYMENT & INSTRUCTIONS
           ================================================== */}
 
-          <div className="space-y-3 pt-3 border-t border-[#EDE2E5]">
+          <div className="space-y-4 pt-4 border-t-2 border-[#EDE2E5]">
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
 
               {/* INSTRUCTIONS */}
 
               <div>
 
-                <label className="text-xs font-bold text-[#29252A] block mb-1">
-                  Special Instructions / Packing Note
+                <label className="text-sm font-bold text-[#29252A] block mb-2">
+                  {t.specialInstructions}
                 </label>
 
                 <textarea
-                  rows={2}
+                  rows={3}
                   value={specialInstructions}
                   disabled={BulkOrderActionLoad}
                   onChange={(e) =>
@@ -963,23 +965,23 @@ export const BulkOrderFormModal: React.FC<BulkOrderFormModalProps> = ({
                       e.target.value
                     )
                   }
-                  placeholder="e.g. 250g individual gift boxes, ribbon packaging, no nuts on cake..."
-                  className="w-full px-3 py-1.5 bg-white border border-[#EDE2E5] rounded-xl text-xs text-[#29252A] focus:border-[#C94F6D] outline-none disabled:opacity-60"
+                  placeholder={t.specialInstructionsPlaceholder}
+                  className="w-full px-4 py-3 bg-white border-2 border-[#EDE2E5] rounded-xl text-sm sm:text-base text-[#29252A] focus:border-[#C94F6D] focus:ring-4 focus:ring-[#FCE7EC] outline-none disabled:opacity-60"
                 />
 
               </div>
 
               {/* FINANCIAL SUMMARY */}
 
-              <div className="p-3 rounded-xl bg-[#FFF0F3] border border-[#C94F6D]/20 space-y-1.5 text-xs">
+              <div className="p-4 rounded-xl bg-[#FFF0F3] border-2 border-[#C94F6D]/20 space-y-2.5 text-sm">
 
                 <div className="flex justify-between font-semibold text-[#29252A]">
 
                   <span>
-                    Total Order Amount:
+                    {t.totalOrderAmount}
                   </span>
 
-                  <span className="font-bold text-sm">
+                  <span className="font-bold text-base">
 
                     ₹
                     {totalAmount.toLocaleString()}
@@ -991,10 +993,10 @@ export const BulkOrderFormModal: React.FC<BulkOrderFormModalProps> = ({
                 <div className="flex justify-between items-center text-[#29252A]">
 
                   <span>
-                    Advance Received:
+                    {t.advanceReceived}
                   </span>
 
-                  <div className="flex items-center gap-1 w-28">
+                  <div className="flex items-center gap-1.5 w-32">
 
                     <span className="font-bold">
                       ₹
@@ -1014,17 +1016,17 @@ export const BulkOrderFormModal: React.FC<BulkOrderFormModalProps> = ({
                           ) || 0
                         )
                       }
-                      className="w-full px-2 py-0.5 bg-white border border-[#EDE2E5] rounded text-xs font-bold text-[#3FA56B] text-right disabled:opacity-60"
+                      className="w-full px-2.5 py-1.5 bg-white border-2 border-[#EDE2E5] rounded-lg text-sm font-bold text-[#3FA56B] text-right disabled:opacity-60"
                     />
 
                   </div>
 
                 </div>
 
-                <div className="flex justify-between items-center pt-1.5 border-t border-[#C94F6D]/20 font-extrabold text-[#C94F6D] text-sm">
+                <div className="flex justify-between items-center pt-2.5 border-t-2 border-[#C94F6D]/20 font-extrabold text-[#C94F6D] text-base">
 
                   <span>
-                    Remaining Balance:
+                    {t.remainingBalance}
                   </span>
 
                   <span>
@@ -1046,15 +1048,15 @@ export const BulkOrderFormModal: React.FC<BulkOrderFormModalProps> = ({
               FOOTER
           ================================================== */}
 
-          <div className="pt-4 border-t border-[#EDE2E5] flex items-center justify-end gap-3">
+          <div className="pt-5 border-t-2 border-[#EDE2E5] flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-3">
 
             <button
               type="button"
               onClick={handleClose}
               disabled={BulkOrderActionLoad}
-              className="px-4 py-2 rounded-xl bg-white border border-[#EDE2E5] hover:bg-[#FFF4F6] text-xs font-semibold text-[#756B70] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-3.5 rounded-xl bg-white border-2 border-[#EDE2E5] hover:bg-[#FFF4F6] text-sm font-bold text-[#756B70] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Cancel
+              {t.cancel}
             </button>
 
             <button
@@ -1065,12 +1067,12 @@ export const BulkOrderFormModal: React.FC<BulkOrderFormModalProps> = ({
                 orderItems.length === 0 ||
                 BulkOrderActionLoad
               }
-              className="px-5 py-2 rounded-xl bg-[#C94F6D] hover:bg-[#A83D58] text-white text-xs font-bold shadow-sm shadow-[#C94F6D]/25 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-3.5 rounded-xl bg-[#C94F6D] hover:bg-[#A83D58] text-white text-sm font-bold shadow-sm shadow-[#C94F6D]/25 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
 
               {BulkOrderActionLoad
-                ? 'Saving...'
-                : 'Save Bulk Order'}
+                ? t.saving
+                : t.saveBulkOrder}
 
             </button>
 
