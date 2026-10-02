@@ -110,11 +110,14 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                   <span>Cashier: {invoice.cashierName}</span>
                   <span>{invoice.timeOnly}</span>
                 </div>
-                {invoice.customerName && invoice.customerName !== 'Counter Customer' && (
-                  <div className="text-[10px] text-[#756B70] pt-0.5">
-                    Customer: {invoice.customerName} ({invoice.customerPhone})
-                  </div>
-                )}
+               {invoice.customerName && invoice.customerName !== 'Counter Customer' ? (
+  <>
+    <p className="font-bold text-[#29252A] text-sm mt-0.5">{invoice.customerName}</p>
+    <p className="text-[#756B70]">Phone: {invoice.customerPhone}</p>
+  </>
+) : (
+  <p className="font-bold text-[#29252A] text-sm mt-0.5">Counter Customer</p>
+)}
               </div>
 
               {/* Items List */}

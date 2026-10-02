@@ -12,7 +12,8 @@ import {
   CheckCircle2,
   ChevronRight,
   RefreshCw,
-  AlertTriangle
+  AlertTriangle,
+  Eye
 } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../redux/store';
@@ -65,7 +66,31 @@ export const InvoicesView: React.FC<InvoicesViewProps> = ({
   const cashTotal = effectiveInvoices
     .filter((i: any) => (i.paymentMethod || i.payment_method) === 'Cash')
     .reduce((acc, i: any) => acc + Number(i.grandTotal ?? i.grand_total ?? 0), 0);
-
+const normalizeInvoiceForModal = (inv: any) => ({
+  invoiceNumber: inv.invoiceNumber || inv.invoice_number,
+  dateOnly: inv.dateOnly || inv.sale_date,
+  timeOnly: inv.timeOnly || inv.sale_time,
+  customerName: inv.customerName || inv.customer_name || 'Counter Customer',
+  customerPhone: inv.customerPhone || inv.customer_phone || '',
+  cashierName: inv.cashierName || (inv.cashier_id ? `Staff #${inv.cashier_id}` : 'N/A'),
+  status: inv.status || 'Completed',
+  subtotal: Number(inv.subtotal) || 0,
+  discountTotal: Number(inv.discountTotal ?? inv.discount) || 0,
+  cgst: Number(inv.cgst) || 0,
+  sgst: Number(inv.sgst) || 0,
+  grandTotal: Number(inv.grandTotal ?? inv.grand_total) || 0,
+  amountPaid: Number(inv.amountPaid ?? inv.amount_paid) || 0,
+  balanceReturn: Number(inv.balanceReturn ?? inv.balance_return) || 0,
+  paymentMethod: inv.paymentMethod || inv.payment_method,
+  items: (inv.items || inv.sale_items || []).map((it: any) => ({
+    productName: it.productName || it.product_name_snapshot || it.product_name,
+    category: it.category || it.category_name || '',
+    unit: it.unit,
+    quantity: Number(it.quantity) || 0,
+    price: Number(it.price ?? it.price_per_unit) || 0,
+    total: Number(it.total) || 0,
+  })),
+});
   return (
     <div className="space-y-5 pb-12">
       {/* Header */}
@@ -187,18 +212,18 @@ export const InvoicesView: React.FC<InvoicesViewProps> = ({
                   </td>
                 </tr>
               ) : (
-                filteredInvoices.map((inv) => {
-                  const invNum = inv.invoiceNumber || (inv as any).invoice_number;
-                  const dateOnly = inv.dateOnly || (inv as any).created_at?.split('T')[0] || 'Today';
-                  const timeOnly = inv.timeOnly || '';
-                  const custName = inv.customerName || (inv as any).customer_name;
-                  const custPhone = inv.customerPhone || (inv as any).customer_phone;
-                  const payMethod = inv.paymentMethod || (inv as any).payment_method || 'Cash';
-                  const grndTotal = Number(inv.grandTotal ?? (inv as any).grand_total ?? 0);
-                  const itemsList = inv.items || [];
+             filteredInvoices.map((inv, idx) => {
+  const invNum = inv.invoiceNumber || (inv as any).invoice_number;
+  const dateOnly = inv.dateOnly || (inv as any).created_at?.split('T')[0] || 'Today';
+  const timeOnly = inv.timeOnly || '';
+  const custName = inv.customerName || (inv as any).customer_name;
+  const custPhone = inv.customerPhone || (inv as any).customer_phone;
+  const payMethod = inv.paymentMethod || (inv as any).payment_method || 'Cash';
+  const grndTotal = Number(inv.grandTotal ?? (inv as any).grand_total ?? 0);
+  const itemsList = inv.items || [];
 
-                  return (
-                    <tr key={inv.id} className="hover:bg-[#FFF9F5]/70 transition-colors">
+  return (
+    <tr key={(inv as any).id ?? `sale-${idx}`} className="hover:bg-[#FFF9F5]/70 transition-colors">
                       {/* Invoice Number */}
                       <td className="py-3 px-4 font-mono font-bold text-[#29252A]">
                         {invNum}
@@ -253,15 +278,25 @@ export const InvoicesView: React.FC<InvoicesViewProps> = ({
                       </td>
 
                       {/* Actions */}
-                      <td className="py-3 px-4 text-right">
-                        <button
-                          onClick={() => onViewInvoice(inv)}
-                          className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-[#FFF0F3] hover:bg-[#FCE7EC] text-[#C94F6D] font-bold text-xs transition-colors cursor-pointer"
-                        >
-                          <Printer className="w-3.5 h-3.5" />
-                          <span>Print Bill</span>
-                        </button>
-                      </td>
+                    {/* Actions */}
+<td className="py-3 px-4 text-right">
+  <div className="flex items-center justify-end gap-1.5">
+  <button
+ onClick={() => onViewInvoice(normalizeInvoiceForModal(inv) as Invoice)}
+  className="p-1.5 rounded-lg text-[#756B70] hover:text-[#C94F6D] hover:bg-[#FFF0F3] transition-colors cursor-pointer"
+  title="Preview Invoice"
+>
+  <Eye className="w-4 h-4" />
+</button>
+<button
+ onClick={() => onViewInvoice(normalizeInvoiceForModal(inv) as Invoice)}
+  className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-[#FFF0F3] hover:bg-[#FCE7EC] text-[#C94F6D] font-bold text-xs transition-colors cursor-pointer"
+>
+  <Printer className="w-3.5 h-3.5" />
+  <span>Print Bill</span>
+</button>
+  </div>
+</td>
                     </tr>
                   );
                 })

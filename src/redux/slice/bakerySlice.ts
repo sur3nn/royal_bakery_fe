@@ -27,7 +27,7 @@ import {
   UpdateSettingsAction,
   FetchUnitsAction,
 } from '../actions/bakeryActions';
-import { mapApiProductToProduct } from '../../utils/mappers';
+import { mapApiProductToProduct, mapApiSaleToInvoice } from '../../utils/mappers';
 
 export interface BakeryState {
   DashboardData: any;
@@ -276,10 +276,10 @@ export const bakerySlice = createSlice({
         state.SalesLoad = true;
         state.SalesError = null;
       })
-      .addCase(FetchSalesAction.fulfilled, (state, action) => {
-        state.SalesLoad = false;
-        state.SalesData = Array.isArray(action.payload) ? action.payload : [];
-      })
+    .addCase(FetchSalesAction.fulfilled, (state, action) => {
+  state.SalesLoad = false;
+  state.SalesData = Array.isArray(action.payload) ? action.payload.map(mapApiSaleToInvoice) : [];
+})
       .addCase(FetchSalesAction.rejected, (state, action) => {
         state.SalesLoad = false;
         state.SalesError = action.payload;
@@ -290,13 +290,11 @@ export const bakerySlice = createSlice({
       .addCase(CreateSaleAction.pending, (state) => {
         state.SaleActionLoad = true;
       })
-      .addCase(CreateSaleAction.fulfilled, (state, action) => {
-        state.SaleActionLoad = false;
-        state.CreatedSale = action.payload;
-        if (action.payload) {
-          state.SalesData.unshift(action.payload);
-        }
-      })
+  .addCase(CreateSaleAction.fulfilled, (state, action) => {
+  state.SaleActionLoad = false;
+  state.CreatedSale = action.payload ? mapApiSaleToInvoice(action.payload) : null;
+  if (action.payload) state.SalesData.unshift(mapApiSaleToInvoice(action.payload));
+})
       .addCase(CreateSaleAction.rejected, (state, action) => {
         state.SaleActionLoad = false;
         state.SalesError = action.payload;

@@ -28,6 +28,7 @@ import {
   FetchCategoriesAction
 } from '../redux/actions/bakeryActions';
 import { Product, CartItem, Invoice } from '../types';
+import { useNavigate } from 'react-router-dom';
 
 interface BillingViewProps {
   products?: Product[];
@@ -63,7 +64,7 @@ useEffect(() => {
   // Payment States
   const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'UPI' | 'Card' | 'Split'>('Cash');
   const [amountPaidInput, setAmountPaidInput] = useState<string>('');
-
+const navigate = useNavigate();
 
 const categories = ['All', ...(CategoriesData || []).map((c: any) => c.name).filter((n: string) => !!n)];
   // Active products
@@ -236,7 +237,31 @@ const categories = ['All', ...(CategoriesData || []).map((c: any) => c.name).fil
   const handleQuickCash = (amt: number) => {
     setAmountPaidInput(amt.toString());
   };
-
+const normalizeInvoiceForModal = (inv: any) => ({
+  invoiceNumber: inv.invoiceNumber || inv.invoice_number,
+  dateOnly: inv.dateOnly || inv.sale_date,
+  timeOnly: inv.timeOnly || inv.sale_time,
+  customerName: inv.customerName || inv.customer_name || 'Counter Customer',
+  customerPhone: inv.customerPhone || inv.customer_phone || '',
+  cashierName: inv.cashierName || (inv.cashier_id ? `Staff #${inv.cashier_id}` : 'N/A'),
+  status: inv.status || 'Completed',
+  subtotal: Number(inv.subtotal) || 0,
+  discountTotal: Number(inv.discountTotal ?? inv.discount) || 0,
+  cgst: Number(inv.cgst) || 0,
+  sgst: Number(inv.sgst) || 0,
+  grandTotal: Number(inv.grandTotal ?? inv.grand_total) || 0,
+  amountPaid: Number(inv.amountPaid ?? inv.amount_paid) || 0,
+  balanceReturn: Number(inv.balanceReturn ?? inv.balance_return) || 0,
+  paymentMethod: inv.paymentMethod || inv.payment_method,
+  items: (inv.items || inv.sale_items || []).map((it: any) => ({
+    productName: it.productName || it.product_name_snapshot || it.product_name,
+    category: it.category || it.category_name || '',
+    unit: it.unit,
+    quantity: Number(it.quantity) || 0,
+    price: Number(it.price ?? it.price_per_unit) || 0,
+    total: Number(it.total) || 0,
+  })),
+});
   // Generate and process invoice via real backend Redux action
   const handleCheckout = async () => {
     if (cart.length === 0) {
@@ -280,31 +305,32 @@ const categories = ['All', ...(CategoriesData || []).map((c: any) => c.name).fil
 
     try {
       const resultAction = await dispatch(CreateSaleAction(salePayload));
-      if (CreateSaleAction.fulfilled.match(resultAction)) {
-        const createdSale = resultAction.payload;
-        onToast(
-          'success',
-          'Payment Successful',
-          `Invoice ${createdSale.invoiceNumber || createdSale.invoice_number} generated! Total: ₹${createdSale.grandTotal || createdSale.grand_total}`
-        );
+if (CreateSaleAction.fulfilled.match(resultAction)) {
+  const createdSale = normalizeInvoiceForModal(resultAction.payload);
+  onToast(
+    'success',
+    'Payment Successful',
+    `Invoice ${createdSale.invoiceNumber} generated! Total: ₹${createdSale.grandTotal}`
+  );
 
-        // Open Invoice Modal
-        onGenerateInvoice(createdSale);
+  // Open Invoice Modal
+  onGenerateInvoice(createdSale as Invoice);
 
-        // Reset UI
-        setCart([]);
-        setCustomerName('');
-        setCustomerPhone('');
-        setAmountPaidInput('');
-        setCartDiscountPercent(0);
+  // Reset UI
+  setCart([]);
+  setCustomerName('');
+  setCustomerPhone('');
+  setAmountPaidInput('');
+  setCartDiscountPercent(0);
 
-        // Refresh Redux State
-        dispatch(FetchProductsAction({}));
-        dispatch(FetchSalesAction({}));
-        dispatch(FetchDashboardAction({}));
-      } else {
-        onToast('error', 'Checkout Error', String(resultAction.payload || 'Failed to record sale'));
-      }
+  // Refresh Redux State
+  dispatch(FetchProductsAction({}));
+  dispatch(FetchSalesAction({}));
+  dispatch(FetchDashboardAction({}));
+  navigate('/invoices');
+} else {
+  onToast('error', 'Checkout Error', String(resultAction.payload || 'Failed to record sale'));
+}
     } catch (err: any) {
       onToast('error', 'Checkout Error', err?.message || 'Failed to complete sale');
     }
