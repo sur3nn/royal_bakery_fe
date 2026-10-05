@@ -19,6 +19,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../redux/store';
 import { FetchSalesAction } from '../redux/actions/bakeryActions';
 import { Invoice } from '../types';
+import { invoicesLabels as t } from '../components/Bakerylabels';
 
 interface InvoicesViewProps {
   invoices?: Invoice[];
@@ -96,37 +97,37 @@ const normalizeInvoiceForModal = (inv: any) => ({
       {/* Header */}
       <div>
         <h1 className="text-xl sm:text-2xl font-extrabold text-[#29252A] tracking-tight">
-          Sales Invoices & Receipts
+          {t.pageTitle}
         </h1>
         <p className="text-xs sm:text-sm text-[#756B70] mt-0.5">
-          History of all counter billing slips, GST invoices, and customer transactions (synced with database)
+          {t.pageSubtitle}
         </p>
       </div>
 
       {/* Mini KPI summary */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white rounded-2xl p-4 border border-[#EDE2E5] shadow-xs">
-          <span className="text-xs font-semibold text-[#756B70]">Total Revenue Recorded</span>
+          <span className="text-xs font-semibold text-[#756B70]">{t.totalRevenueLabel}</span>
           <p className="text-2xl font-extrabold text-[#C94F6D] mt-1">
             ₹{totalRevenue.toLocaleString()}
           </p>
-          <span className="text-[11px] text-[#756B70]">{effectiveInvoices.length} invoices generated</span>
+          <span className="text-[11px] text-[#756B70]">{effectiveInvoices.length} {t.invoicesGeneratedSuffix}</span>
         </div>
 
         <div className="bg-white rounded-2xl p-4 border border-[#EDE2E5] shadow-xs">
-          <span className="text-xs font-semibold text-[#756B70]">Cash Register Collection</span>
+          <span className="text-xs font-semibold text-[#756B70]">{t.cashCollectionLabel}</span>
           <p className="text-2xl font-extrabold text-[#3FA56B] mt-1">
             ₹{cashTotal.toLocaleString()}
           </p>
-          <span className="text-[11px] text-[#756B70]">Drawer cash total</span>
+          <span className="text-[11px] text-[#756B70]">{t.drawerCashTotal}</span>
         </div>
 
         <div className="bg-white rounded-2xl p-4 border border-[#EDE2E5] shadow-xs">
-          <span className="text-xs font-semibold text-[#756B70]">Digital UPI / QR Collections</span>
+          <span className="text-xs font-semibold text-[#756B70]">{t.upiCollectionLabel}</span>
           <p className="text-2xl font-extrabold text-[#4F86C6] mt-1">
             ₹{upiTotal.toLocaleString()}
           </p>
-          <span className="text-[11px] text-[#756B70]">Settled to primary bank</span>
+          <span className="text-[11px] text-[#756B70]">{t.settledToBank}</span>
         </div>
       </div>
 
@@ -136,7 +137,7 @@ const normalizeInvoiceForModal = (inv: any) => ({
           <Search className="w-4 h-4 text-[#756B70] absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Search invoice #, customer name, mobile..."
+            placeholder={t.searchPlaceholder}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-9 pr-4 py-2 bg-[#FFF9F5]/70 border border-[#EDE2E5] rounded-xl text-xs sm:text-sm text-[#29252A] placeholder-[#756B70] focus:border-[#C94F6D] outline-none"
@@ -145,7 +146,12 @@ const normalizeInvoiceForModal = (inv: any) => ({
 
         {/* Payment mode filter */}
         <div className="flex items-center gap-1 overflow-x-auto w-full sm:w-auto">
-          {(['All', 'Cash', 'UPI', 'Card'] as const).map((method) => (
+          {([
+            ['All', t.filterAll],
+            ['Cash', t.filterCash],
+            ['UPI', t.filterUpi],
+            ['Card', t.filterCard],
+          ] as const).map(([method, label]) => (
             <button
               key={method}
               onClick={() => setPaymentFilter(method)}
@@ -155,7 +161,7 @@ const normalizeInvoiceForModal = (inv: any) => ({
                   : 'bg-[#FFF9F5] text-[#756B70] hover:text-[#29252A] border border-[#EDE2E5]'
               }`}
             >
-              {method}
+              {label}
             </button>
           ))}
         </div>
@@ -174,14 +180,14 @@ const normalizeInvoiceForModal = (inv: any) => ({
       {SalesError && !effectiveInvoices.length && (
         <div className="bg-[#FFF0F3] border border-[#C94F6D]/30 rounded-2xl p-6 text-center space-y-3">
           <AlertTriangle className="w-8 h-8 text-[#C94F6D] mx-auto" />
-          <h3 className="text-base font-bold text-[#29252A]">Failed to Load Sales Invoices</h3>
+          <h3 className="text-base font-bold text-[#29252A]">{t.failedToLoad}</h3>
           <p className="text-xs text-[#756B70]">{String(SalesError)}</p>
           <button
             onClick={() => dispatch(FetchSalesAction({}))}
             className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#C94F6D] text-white text-xs font-semibold rounded-xl hover:bg-[#A83D58] transition-colors cursor-pointer"
           >
             <RefreshCw className="w-3.5 h-3.5" />
-            <span>Retry Loading</span>
+            <span>{t.retryLoading}</span>
           </button>
         </div>
       )}
@@ -192,14 +198,14 @@ const normalizeInvoiceForModal = (inv: any) => ({
           <table className="w-full text-left text-xs sm:text-sm">
             <thead className="bg-[#FFF9F5] text-[#756B70] font-bold border-b border-[#EDE2E5] uppercase text-[11px] tracking-wider">
               <tr>
-                <th className="py-3 px-4">Invoice #</th>
-                <th className="py-3 px-4">Date & Time</th>
-                <th className="py-3 px-4">Customer</th>
-                <th className="py-3 px-4">Items</th>
-                <th className="py-3 px-4">Payment</th>
-                <th className="py-3 px-4">Total Amount</th>
-                <th className="py-3 px-4">Status</th>
-                <th className="py-3 px-4 text-right">Receipt</th>
+                <th className="py-3 px-4">{t.colInvoiceNumber}</th>
+                <th className="py-3 px-4">{t.colDateTime}</th>
+                <th className="py-3 px-4">{t.colCustomer}</th>
+                <th className="py-3 px-4">{t.colItems}</th>
+                <th className="py-3 px-4">{t.colPayment}</th>
+                <th className="py-3 px-4">{t.colTotalAmount}</th>
+                <th className="py-3 px-4">{t.colStatus}</th>
+                <th className="py-3 px-4 text-right">{t.colReceipt}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#EDE2E5]/70">
@@ -207,8 +213,8 @@ const normalizeInvoiceForModal = (inv: any) => ({
                 <tr>
                   <td colSpan={8} className="py-12 text-center text-[#756B70]">
                     <FileText className="w-10 h-10 text-[#EDE2E5] mx-auto mb-2" />
-                    <p className="font-semibold text-sm text-[#29252A]">No invoices found</p>
-                    <p className="text-xs text-[#756B70]">Generate a bill from the POS register to see transactions here.</p>
+                    <p className="font-semibold text-sm text-[#29252A]">{t.noInvoicesFound}</p>
+                    <p className="text-xs text-[#756B70]">{t.noInvoicesHint}</p>
                   </td>
                 </tr>
               ) : (
@@ -247,7 +253,7 @@ const normalizeInvoiceForModal = (inv: any) => ({
                       {/* Items */}
                       <td className="py-3 px-4">
                         <span className="text-xs font-semibold text-[#29252A]">
-                          {itemsList.length} item(s)
+                          {itemsList.length} {t.itemsSuffix}
                         </span>
                         <p className="text-[10px] text-[#756B70] truncate max-w-[140px]">
                           {itemsList.map((i: any) => i.productName || i.product_name).join(', ')}
@@ -273,7 +279,7 @@ const normalizeInvoiceForModal = (inv: any) => ({
                       <td className="py-3 px-4">
                         <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#3FA56B] bg-[#EAF7EE] px-2 py-0.5 rounded-full">
                           <CheckCircle2 className="w-3 h-3" />
-                          <span>Paid</span>
+                          <span>{t.statusPaid}</span>
                         </span>
                       </td>
 
@@ -284,7 +290,7 @@ const normalizeInvoiceForModal = (inv: any) => ({
   <button
  onClick={() => onViewInvoice(normalizeInvoiceForModal(inv) as Invoice)}
   className="p-1.5 rounded-lg text-[#756B70] hover:text-[#C94F6D] hover:bg-[#FFF0F3] transition-colors cursor-pointer"
-  title="Preview Invoice"
+  title={t.previewInvoiceTitle}
 >
   <Eye className="w-4 h-4" />
 </button>
@@ -293,7 +299,7 @@ const normalizeInvoiceForModal = (inv: any) => ({
   className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-[#FFF0F3] hover:bg-[#FCE7EC] text-[#C94F6D] font-bold text-xs transition-colors cursor-pointer"
 >
   <Printer className="w-3.5 h-3.5" />
-  <span>Print Bill</span>
+  <span>{t.printBillBtn}</span>
 </button>
   </div>
 </td>

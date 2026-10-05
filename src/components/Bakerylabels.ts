@@ -126,3 +126,74 @@ export const bulkOrderLabels = {
   saving: "சேமிக்கிறது...",
   saveBulkOrder: "மொத்த ஆர்டரை சேமி",
 };
+export const billingLabels = {
+  searchPlaceholder: "இனிப்பு பெயர் அல்லது குறியீடு தேடு...",
+  itemsCountSuffix: "பொருட்கள்",
+  categoryAll: "அனைத்தும்",
+
+  outOfStock: "இல்லை",
+  lowStockPrefix: "குறைவு",
+  inCartSuffix: "கூடையில்",
+
+  cartHeading: "என் கூடை",
+  clear: "அழி",
+
+  cartEmptyTitle: "கூடை காலியாக உள்ளது",
+  cartEmptyHint: "பொருளைத் தொட்டு சேர்க்கவும்",
+
+  subtotalLabel: "மொத்தம் (பொருட்கள்):",
+  taxLabel: "வரி:",
+  totalToPay: "கொடுக்க வேண்டிய தொகை:",
+
+  paymentMethodLabel: "பணம் செலுத்தும் விதம்",
+  payCash: "பணம்",
+  payUpi: "UPI",
+  payCard: "கார்டு",
+  paySplit: "பிரித்து",
+
+  cashGiven: "கொடுத்த பணம்:",
+  quickLabel: "விரைவு:",
+  changeToGive: "திருப்பிக் கொடுக்க வேண்டியது:",
+
+  makeBillBtn: "பில் தயார் செய்",
+  savingBillBtn: "பில் தயாராகிறது...",
+};
+export const invoicesLabels = {
+  pageTitle: "விற்பனை பில்கள் & ரசீதுகள்",
+  pageSubtitle: "அனைத்து கவுண்டர் பில்கள், GST இன்வாய்ஸ், வாடிக்கையாளர் பரிவர்த்தனைகளின் வரலாறு",
+
+  totalRevenueLabel: "மொத்த வருவாய்",
+  invoicesGeneratedSuffix: "பில்கள் உருவாக்கப்பட்டது",
+  cashCollectionLabel: "பணப் பெட்டி தொகை",
+  drawerCashTotal: "பணப்பெட்டி மொத்தம்",
+  upiCollectionLabel: "UPI / QR வசூல்",
+  settledToBank: "வங்கிக்கு செலுத்தப்பட்டது",
+
+  searchPlaceholder: "பில் எண், வாடிக்கையாளர் பெயர், எண் தேடவும்...",
+
+  filterAll: "அனைத்தும்",
+  filterCash: "பணம்",
+  filterUpi: "UPI",
+  filterCard: "கார்டு",
+
+  failedToLoad: "பில்களை ஏற்ற முடியவில்லை",
+  retryLoading: "மீண்டும் முயற்சிக்கவும்",
+
+  colInvoiceNumber: "பில் எண்",
+  colDateTime: "தேதி & நேரம்",
+  colCustomer: "வாடிக்கையாளர்",
+  colItems: "பொருட்கள்",
+  colPayment: "பணம் செலுத்தல்",
+  colTotalAmount: "மொத்த தொகை",
+  colStatus: "நிலை",
+  colReceipt: "ரசீது",
+
+  noInvoicesFound: "பில்கள் எதுவும் இல்லை",
+  noInvoicesHint: "POS மெஷினில் பில் உருவாக்கினால் இங்கே தெரியும்.",
+
+  itemsSuffix: "பொருட்கள்",
+  statusPaid: "செலுத்தப்பட்டது",
+
+  previewInvoiceTitle: "பில்லைப் பார்",
+  printBillBtn: "பில் அச்சிடு",
+};

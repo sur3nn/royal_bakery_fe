@@ -259,7 +259,6 @@ const categories = ['All', ...(CategoriesData || []).map((c: any) => c.name).fil
                   <th className="py-4 px-4">{t.colItemDetails}</th>
                   <th className="py-4 px-4">{t.colCategory}</th>
                   <th className="py-4 px-4 text-right">{t.colSellingPrice}</th>
-                  <th className="py-4 px-4 text-right">{t.colGstRate}</th>
                   <th className="py-4 px-4 text-center">{t.colStockLevel}</th>
                   <th className="py-4 px-4 text-center">{t.colStatus}</th>
                   <th className="py-4 px-4 text-right">{t.colActions}</th>
@@ -298,10 +297,6 @@ const categories = ['All', ...(CategoriesData || []).map((c: any) => c.name).fil
                       <td className="py-4 px-4 text-right font-extrabold text-base text-[#29252A]">
                         ₹{p.sellingPrice || (p as any).selling_price}{' '}
                         <span className="text-xs text-[#756B70] font-normal">/ {p.unit}</span>
-                      </td>
-
-                      <td className="py-4 px-4 text-right font-semibold text-[#756B70]">
-                        {p.gstRate || (p as any).gst_rate || 5}%
                       </td>
 
                       <td className="py-4 px-4 text-center">
