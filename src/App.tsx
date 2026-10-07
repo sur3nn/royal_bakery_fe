@@ -383,7 +383,7 @@ export default function App() {
       <BulkOrderFormModal
         isOpen={isBulkOrderModalOpen}
         onClose={() => setIsBulkOrderModalOpen(false)}
-        
+
       />
 
       {/* Tax & Thermal Invoice Preview Modal */}

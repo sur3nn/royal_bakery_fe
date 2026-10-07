@@ -9,7 +9,7 @@ import { formatDate, formatTime } from '../utils/date_format';
 interface BulkOrdersViewProps {
   bulkOrders?: BulkOrder[];
   onCreateOrder: () => void;
-  onUpdateStatus: (orderId: string, newStatus: number) => void;
+  onUpdateStatus: (orderId: string, newStatus: any) => void;
 }
 
 // Make every order look the same (handles camelCase and snake_case from the API)
@@ -97,8 +97,7 @@ export const BulkOrdersView: React.FC<BulkOrdersViewProps> = ({
   }, [BulkOrdersData, initialOrders, search, statusFilter]);
 
   const tab = (active: boolean) =>
-    `px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap cursor-pointer ${
-      active ? 'bg-[#29252A] text-white' : 'bg-[#FFF9F5] text-[#756B70] border border-[#EDE2E5]'
+    `px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap cursor-pointer ${active ? 'bg-[#29252A] text-white' : 'bg-[#FFF9F5] text-[#756B70] border border-[#EDE2E5]'
     }`;
 
   return (
