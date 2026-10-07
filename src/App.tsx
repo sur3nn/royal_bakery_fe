@@ -217,7 +217,7 @@ export default function App() {
 
 
 
-  const handleUpdateBulkOrderStatus = async (orderId: string, newStatus: BulkOrderStatus) => {
+  const handleUpdateBulkOrderStatus = async (orderId: string, newStatus: number) => {
     try {
       await dispatch(UpdateBulkOrderStatusAction({ id: orderId, status: newStatus })).unwrap();
       dispatch(FetchBulkOrdersAction({}));
