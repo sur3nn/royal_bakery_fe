@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const rawBaseUrl = 'http://localhost:5000';
+const rawBaseUrl = 'https://indigo-kangaroo-864288.hostingersite.com';
 
 const API_BASE_URL = rawBaseUrl.endsWith('/api')
   ? rawBaseUrl
@@ -111,12 +111,12 @@ export const axiosFile = {
     apiClient.put(`/units/${id}`, payload),
 
   getBulkOrderStatuses: () =>
-  apiClient.get('/bulk-orders/status'),
+    apiClient.get('/bulk-orders/status'),
 
-updateBulkOrderStatus: (id: string | number, status: number) =>
-  apiClient.patch(`/bulk-orders/${id}/status`, { status }),
+  updateBulkOrderStatus: (id: string | number, status: number) =>
+    apiClient.patch(`/bulk-orders/${id}/status`, { status }),
 
-  
+
 };
 
 export default axiosFile;
