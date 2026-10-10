@@ -14,7 +14,8 @@ import {
   CheckCircle2,
   AlertCircle,
   Loader2,
-  AlertTriangle
+  AlertTriangle,
+  X
 } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../redux/store';
@@ -28,6 +29,7 @@ import {
 import { Product, CartItem, Invoice } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { billingLabels as t } from '../components/Bakerylabels';
+import KitchenKotButton from './Kitchenkotbutton';
 
 interface BillingViewProps {
   products?: Product[];
@@ -36,19 +38,34 @@ interface BillingViewProps {
   onToast: (type: 'success' | 'info' | 'warning' | 'error', title: string, message: string) => void;
 }
 
+// ---------- Weight (kg) helpers ----------
+const WEIGHT_OPTIONS = [
+  { label: '250 gm', qty: 0.25 },
+  { label: '500 gm', qty: 0.5 },
+  { label: '1 kg', qty: 1 },
+];
+
+const round3 = (n: number) => Math.round(n * 1000) / 1000;
+
+const isKgUnit = (unit?: string) =>
+  ['kg', 'kgs', 'kilogram', 'kilograms'].includes(String(unit || '').trim().toLowerCase());
+
+const formatQty = (qty: number, unit?: string) => {
+  if (!isKgUnit(unit)) return String(qty);
+  return qty < 1 ? `${Math.round(qty * 1000)} gm` : `${round3(qty)} kg`;
+};
+
 export const BillingView: React.FC<BillingViewProps> = ({
   products: initialProducts = [],
   onGenerateInvoice,
   onToast,
 }) => {
   const dispatch = useDispatch<AppDispatch>();
-  const { ProductsData, ProductsLoad, ProductsError, SaleActionLoad,CategoriesData } = useSelector((state: RootState) => state.bakery);
-useEffect(() => {
-  dispatch(FetchProductsAction({}));
-  if (!CategoriesData?.length) dispatch(FetchCategoriesAction({}));
-}, [dispatch]);
+  const { ProductsData, ProductsLoad, ProductsError, SaleActionLoad, CategoriesData } = useSelector((state: RootState) => state.bakery);
+
   useEffect(() => {
     dispatch(FetchProductsAction({}));
+    if (!CategoriesData?.length) dispatch(FetchCategoriesAction({}));
   }, [dispatch]);
 
   // POS States
@@ -56,12 +73,15 @@ useEffect(() => {
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [cart, setCart] = useState<CartItem[]>([]);
 
+  // Weight popup state (for kg products)
+  const [weightProduct, setWeightProduct] = useState<Product | null>(null);
+
   // Payment States
   const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'UPI' | 'Card' | 'Split'>('Cash');
   const [amountPaidInput, setAmountPaidInput] = useState<string>('');
-const navigate = useNavigate();
+  const navigate = useNavigate();
 
-const categories = ['All', ...(CategoriesData || []).map((c: any) => c.name).filter((n: string) => !!n)];
+  const categories = ['All', ...(CategoriesData || []).map((c: any) => c.name).filter((n: string) => !!n)];
   // Active products
   const effectiveProducts: Product[] = (ProductsData?.length ? ProductsData : initialProducts) as Product[];
 
@@ -77,19 +97,24 @@ const categories = ['All', ...(CategoriesData || []).map((c: any) => c.name).fil
   }, [effectiveProducts, selectedCategory, searchQuery]);
 
   // Cart operations
-  const handleAddToCart = (product: Product) => {
+  const handleAddToCart = (product: Product, qty: number = 1) => {
     const existing = cart.find((item) => item.product.id === product.id);
     const stockAvailable = Number(product.stock || 0);
 
     if (existing) {
-      if (existing.quantity >= stockAvailable) {
+      const newQty = round3(existing.quantity + qty);
+      if (newQty > stockAvailable) {
         onToast('warning', 'Stock Limit Reached', `Only ${stockAvailable} ${product.unit} available in stock.`);
         return;
       }
-      handleUpdateQuantity(product.id, existing.quantity + 1);
+      handleUpdateQuantity(product.id, newQty);
     } else {
       if (stockAvailable <= 0) {
         onToast('error', 'Out of Stock', `${product.name} is currently out of stock.`);
+        return;
+      }
+      if (qty > stockAvailable) {
+        onToast('warning', 'Stock Limit Reached', `Only ${stockAvailable} ${product.unit} available in stock.`);
         return;
       }
 
@@ -97,13 +122,13 @@ const categories = ['All', ...(CategoriesData || []).map((c: any) => c.name).fil
       const gstRate = Number(product.gstRate || (product as any).gst_rate || 5);
       const discountPercent = 0;
       const discountAmount = 0;
-      const itemSubtotal = price * 1;
+      const itemSubtotal = Math.round(price * qty * 100) / 100;
       const gstAmount = Math.round((itemSubtotal * (gstRate / 100)) * 100) / 100;
       const itemTotal = itemSubtotal + gstAmount;
 
       const newItem: CartItem = {
         product,
-        quantity: 1,
+        quantity: qty,
         discountPercent,
         discountAmount,
         itemSubtotal,
@@ -115,7 +140,24 @@ const categories = ['All', ...(CategoriesData || []).map((c: any) => c.name).fil
     }
   };
 
-  const handleUpdateQuantity = (productId: string, newQty: number) => {
+  // Called when a product card is clicked
+  const handleProductClick = (product: Product) => {
+    if (isKgUnit(product.unit)) {
+      setWeightProduct(product); // open weight popup
+    } else {
+      handleAddToCart(product);
+    }
+  };
+
+  const handleSelectWeight = (qty: number) => {
+    if (!weightProduct) return;
+    handleAddToCart(weightProduct, qty);
+    setWeightProduct(null);
+  };
+
+  const handleUpdateQuantity = (productId: string, rawQty: number) => {
+    const newQty = round3(rawQty);
+
     if (newQty <= 0) {
       handleRemoveItem(productId);
       return;
@@ -136,7 +178,7 @@ const categories = ['All', ...(CategoriesData || []).map((c: any) => c.name).fil
 
         const rawSubtotal = price * newQty;
         const discountAmount = Math.round((rawSubtotal * (item.discountPercent / 100)) * 100) / 100;
-        const itemSubtotal = rawSubtotal - discountAmount;
+        const itemSubtotal = Math.round((rawSubtotal - discountAmount) * 100) / 100;
         const gstAmount = Math.round((itemSubtotal * (gstRate / 100)) * 100) / 100;
         const itemTotal = itemSubtotal + gstAmount;
 
@@ -196,31 +238,33 @@ const categories = ['All', ...(CategoriesData || []).map((c: any) => c.name).fil
   const handleQuickCash = (amt: number) => {
     setAmountPaidInput(amt.toString());
   };
-const normalizeInvoiceForModal = (inv: any) => ({
-  invoiceNumber: inv.invoiceNumber || inv.invoice_number,
-  dateOnly: inv.dateOnly || inv.sale_date,
-  timeOnly: inv.timeOnly || inv.sale_time,
-  customerName: inv.customerName || inv.customer_name || 'Counter Customer',
-  customerPhone: inv.customerPhone || inv.customer_phone || '',
-  cashierName: inv.cashierName || (inv.cashier_id ? `Staff #${inv.cashier_id}` : 'N/A'),
-  status: inv.status || 'Completed',
-  subtotal: Number(inv.subtotal) || 0,
-  discountTotal: Number(inv.discountTotal ?? inv.discount) || 0,
-  cgst: Number(inv.cgst) || 0,
-  sgst: Number(inv.sgst) || 0,
-  grandTotal: Number(inv.grandTotal ?? inv.grand_total) || 0,
-  amountPaid: Number(inv.amountPaid ?? inv.amount_paid) || 0,
-  balanceReturn: Number(inv.balanceReturn ?? inv.balance_return) || 0,
-  paymentMethod: inv.paymentMethod || inv.payment_method,
-  items: (inv.items || inv.sale_items || []).map((it: any) => ({
-    productName: it.productName || it.product_name_snapshot || it.product_name,
-    category: it.category || it.category_name || '',
-    unit: it.unit,
-    quantity: Number(it.quantity) || 0,
-    price: Number(it.price ?? it.price_per_unit) || 0,
-    total: Number(it.total) || 0,
-  })),
-});
+
+  const normalizeInvoiceForModal = (inv: any) => ({
+    invoiceNumber: inv.invoiceNumber || inv.invoice_number,
+    dateOnly: inv.dateOnly || inv.sale_date,
+    timeOnly: inv.timeOnly || inv.sale_time,
+    customerName: inv.customerName || inv.customer_name || 'Counter Customer',
+    customerPhone: inv.customerPhone || inv.customer_phone || '',
+    cashierName: inv.cashierName || (inv.cashier_id ? `Staff #${inv.cashier_id}` : 'N/A'),
+    status: inv.status || 'Completed',
+    subtotal: Number(inv.subtotal) || 0,
+    discountTotal: Number(inv.discountTotal ?? inv.discount) || 0,
+    cgst: Number(inv.cgst) || 0,
+    sgst: Number(inv.sgst) || 0,
+    grandTotal: Number(inv.grandTotal ?? inv.grand_total) || 0,
+    amountPaid: Number(inv.amountPaid ?? inv.amount_paid) || 0,
+    balanceReturn: Number(inv.balanceReturn ?? inv.balance_return) || 0,
+    paymentMethod: inv.paymentMethod || inv.payment_method,
+    items: (inv.items || inv.sale_items || []).map((it: any) => ({
+      productName: it.productName || it.product_name_snapshot || it.product_name,
+      category: it.category || it.category_name || '',
+      unit: it.unit,
+      quantity: Number(it.quantity) || 0,
+      price: Number(it.price ?? it.price_per_unit) || 0,
+      total: Number(it.total) || 0,
+    })),
+  });
+
   // Generate and process invoice via real backend Redux action
   const handleCheckout = async () => {
     if (cart.length === 0) {
@@ -241,7 +285,7 @@ const normalizeInvoiceForModal = (inv: any) => ({
         product_name: c.product.name,
         unit: c.product.unit,
         price: Number(c.product.sellingPrice || (c.product as any).selling_price || 0),
-        quantity: c.quantity,
+        quantity: c.quantity, // decimal for kg items (0.25, 0.5, 1 ...)
         discount_percent: c.discountPercent,
         subtotal: c.itemSubtotal,
         gst_rate: Number(c.product.gstRate || (c.product as any).gst_rate || 5),
@@ -264,29 +308,29 @@ const normalizeInvoiceForModal = (inv: any) => ({
 
     try {
       const resultAction = await dispatch(CreateSaleAction(salePayload));
-if (CreateSaleAction.fulfilled.match(resultAction)) {
-  const createdSale = normalizeInvoiceForModal(resultAction.payload);
-  onToast(
-    'success',
-    'Payment Successful',
-    `Invoice ${createdSale.invoiceNumber} generated! Total: ₹${createdSale.grandTotal}`
-  );
+      if (CreateSaleAction.fulfilled.match(resultAction)) {
+        const createdSale = normalizeInvoiceForModal(resultAction.payload);
+        onToast(
+          'success',
+          'Payment Successful',
+          `Invoice ${createdSale.invoiceNumber} generated! Total: ₹${createdSale.grandTotal}`
+        );
 
-  // Open Invoice Modal
-  onGenerateInvoice(createdSale as Invoice);
+        // Open Invoice Modal
+        onGenerateInvoice(createdSale as Invoice);
 
-  // Reset UI
-  setCart([]);
-  setAmountPaidInput('');
+        // Reset UI
+        setCart([]);
+        setAmountPaidInput('');
 
-  // Refresh Redux State
-  dispatch(FetchProductsAction({}));
-  dispatch(FetchSalesAction({}));
-  dispatch(FetchDashboardAction({}));
-  navigate('/invoices');
-} else {
-  onToast('error', 'Checkout Error', String(resultAction.payload || 'Failed to record sale'));
-}
+        // Refresh Redux State
+        dispatch(FetchProductsAction({}));
+        dispatch(FetchSalesAction({}));
+        dispatch(FetchDashboardAction({}));
+        navigate('/invoices');
+      } else {
+        onToast('error', 'Checkout Error', String(resultAction.payload || 'Failed to record sale'));
+      }
     } catch (err: any) {
       onToast('error', 'Checkout Error', err?.message || 'Failed to complete sale');
     }
@@ -294,6 +338,7 @@ if (CreateSaleAction.fulfilled.match(resultAction)) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 pb-12 items-start">
+      
       {/* LEFT COLUMN: Product Catalog & Fast Search (col-span-7) */}
       <div className="lg:col-span-7 space-y-4">
         {/* Search & Category Filter Toolbar */}
@@ -316,21 +361,21 @@ if (CreateSaleAction.fulfilled.match(resultAction)) {
           </div>
 
           {/* Category Pills */}
-      <div className="flex items-center gap-2 overflow-x-auto pt-3 border-t-2 border-[#EDE2E5]/70 no-scrollbar">
-  {categories.map((cat) => (
-    <button
-      key={cat}
-      onClick={() => setSelectedCategory(cat)}
-      className={`px-4 py-2.5 rounded-lg text-sm font-bold whitespace-nowrap transition-all cursor-pointer ${
-        selectedCategory === cat
-          ? 'bg-[#C94F6D] text-white shadow-2xs'
-          : 'bg-[#FFF9F5] text-[#756B70] hover:text-[#29252A] hover:bg-[#FFF0F3]'
-      }`}
-    >
-      {cat === 'All' ? t.categoryAll : cat}
-    </button>
-  ))}
-</div>
+          <div className="flex items-center gap-2 overflow-x-auto pt-3 border-t-2 border-[#EDE2E5]/70 no-scrollbar">
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`px-4 py-2.5 rounded-lg text-sm font-bold whitespace-nowrap transition-all cursor-pointer ${
+                  selectedCategory === cat
+                    ? 'bg-[#C94F6D] text-white shadow-2xs'
+                    : 'bg-[#FFF9F5] text-[#756B70] hover:text-[#29252A] hover:bg-[#FFF0F3]'
+                }`}
+              >
+                {cat === 'All' ? t.categoryAll : cat}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Loading Products */}
@@ -354,7 +399,7 @@ if (CreateSaleAction.fulfilled.match(resultAction)) {
             return (
               <div
                 key={product.id}
-                onClick={() => !isOut && handleAddToCart(product)}
+                onClick={() => !isOut && handleProductClick(product)}
                 className={`bg-white rounded-2xl p-3 border-2 transition-all cursor-pointer flex flex-col justify-between group relative overflow-hidden ${
                   isOut
                     ? 'opacity-60 border-[#EDE2E5] cursor-not-allowed'
@@ -366,7 +411,7 @@ if (CreateSaleAction.fulfilled.match(resultAction)) {
                 {/* Active in-cart indicator */}
                 {inCart && (
                   <div className="absolute top-2 right-2 z-10 bg-[#C94F6D] text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-xs">
-                    {inCart.quantity} {t.inCartSuffix}
+                    {formatQty(inCart.quantity, product.unit)} {t.inCartSuffix}
                   </div>
                 )}
 
@@ -479,16 +524,26 @@ if (CreateSaleAction.fulfilled.match(resultAction)) {
                   {/* Quantity Controller */}
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => handleUpdateQuantity(item.product.id, item.quantity - 1)}
+                      onClick={() =>
+                        handleUpdateQuantity(
+                          item.product.id,
+                          item.quantity - (isKgUnit(item.product.unit) ? 0.25 : 1)
+                        )
+                      }
                       className="w-8 h-8 rounded-md bg-[#FFF0F3] hover:bg-[#C94F6D] text-[#C94F6D] hover:text-white flex items-center justify-center transition-colors cursor-pointer"
                     >
                       <Minus className="w-4 h-4 stroke-[2.5]" />
                     </button>
-                    <span className="w-7 text-center text-sm font-bold text-[#29252A]">
-                      {item.quantity}
+                    <span className="min-w-[52px] text-center text-sm font-bold text-[#29252A]">
+                      {formatQty(item.quantity, item.product.unit)}
                     </span>
                     <button
-                      onClick={() => handleUpdateQuantity(item.product.id, item.quantity + 1)}
+                      onClick={() =>
+                        handleUpdateQuantity(
+                          item.product.id,
+                          item.quantity + (isKgUnit(item.product.unit) ? 0.25 : 1)
+                        )
+                      }
                       className="w-8 h-8 rounded-md bg-[#FFF0F3] hover:bg-[#C94F6D] text-[#C94F6D] hover:text-white flex items-center justify-center transition-colors cursor-pointer"
                     >
                       <Plus className="w-4 h-4 stroke-[2.5]" />
@@ -548,8 +603,8 @@ if (CreateSaleAction.fulfilled.match(resultAction)) {
                 {([
                   ['Cash', t.payCash],
                   ['UPI', t.payUpi],
-                  ['Card', t.payCard],
-                  ['Split', t.paySplit],
+                  // ['Card', t.payCard],
+                  // ['Split', t.paySplit],
                 ] as const).map(([method, label]) => {
                   const isSelected = paymentMethod === method;
                   return (
@@ -565,8 +620,8 @@ if (CreateSaleAction.fulfilled.match(resultAction)) {
                     >
                       {method === 'Cash' && <Banknote className="w-5 h-5" />}
                       {method === 'UPI' && <QrCode className="w-5 h-5" />}
-                      {method === 'Card' && <CreditCard className="w-5 h-5" />}
-                      {method === 'Split' && <Percent className="w-5 h-5" />}
+                      {/* {method === 'Card' && <CreditCard className="w-5 h-5" />}
+                      {method === 'Split' && <Percent className="w-5 h-5" />} */}
                       <span>{label}</span>
                     </button>
                   );
@@ -638,6 +693,64 @@ if (CreateSaleAction.fulfilled.match(resultAction)) {
           </div>
         )}
       </div>
+
+      {/* Weight Selection Popup (for kg products) */}
+      {weightProduct && (() => {
+        const price = Number(weightProduct.sellingPrice || (weightProduct as any).selling_price || 0);
+        const stock = Number(weightProduct.stock || 0);
+        const alreadyInCart = cart.find((c) => c.product.id === weightProduct.id)?.quantity || 0;
+
+        return (
+          <div
+            className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"
+            onClick={() => setWeightProduct(null)}
+          >
+            <div
+              className="bg-white rounded-2xl border-2 border-[#EDE2E5] shadow-xl w-full max-w-sm p-5"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start justify-between mb-1">
+                <div className="min-w-0">
+                  <h3 className="font-bold text-lg text-[#29252A] truncate">{weightProduct.name}</h3>
+                  <p className="text-sm text-[#756B70]">₹{price} / kg · Select weight</p>
+                </div>
+                <button
+                  onClick={() => setWeightProduct(null)}
+                  className="p-2 rounded-lg text-[#756B70] hover:bg-[#FFF0F3] hover:text-[#D9535F] cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3 mt-4">
+                {WEIGHT_OPTIONS.map((opt) => {
+                  const optPrice = Math.round(price * opt.qty * 100) / 100;
+                  const exceeds = round3(alreadyInCart + opt.qty) > stock;
+                  return (
+                    <button
+                      key={opt.label}
+                      disabled={exceeds}
+                      onClick={() => handleSelectWeight(opt.qty)}
+                      className={`py-4 rounded-xl border-2 flex flex-col items-center gap-1 transition-all ${
+                        exceeds
+                          ? 'bg-[#EDE2E5]/50 border-[#EDE2E5] text-[#756B70] cursor-not-allowed opacity-60'
+                          : 'bg-[#FFF9F5] border-[#EDE2E5] hover:border-[#C94F6D] hover:bg-[#FFF0F3] cursor-pointer'
+                      }`}
+                    >
+                      <span className="font-extrabold text-base text-[#29252A]">{opt.label}</span>
+                      <span className="text-sm font-bold text-[#C94F6D]">₹{optPrice}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <p className="text-xs text-[#756B70] mt-4 text-center">
+                Available stock: {stock} kg
+              </p>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };

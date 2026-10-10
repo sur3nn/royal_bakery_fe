@@ -5,6 +5,7 @@ import { AppDispatch, RootState } from '../redux/store';
 import { FetchBulkOrdersAction, FetchBulkOrderStatusesAction } from '../redux/actions/bakeryActions';
 import { BulkOrder, BulkOrderStatus } from '../types';
 import { formatDate, formatTime } from '../utils/date_format';
+import KitchenKotButton from './Kitchenkotbutton';
 
 interface BulkOrdersViewProps {
   bulkOrders?: BulkOrder[];
@@ -31,8 +32,8 @@ const simplify = (o: any) => ({
   })),
 });
 
-const API = "https://indigo-kangaroo-864288.hostingersite.com"  //import.meta.env.VITE_API_URL; // change if your API base is different
-
+// const API = "https://indigo-kangaroo-864288.hostingersite.com"  //import.meta.env.VITE_API_URL; // change if your API base is different
+const API = "http://localhost:5000"
 const downloadKot = async (
   id: number,
   type: 'kitchen' | 'packing',
@@ -112,6 +113,7 @@ export const BulkOrdersView: React.FC<BulkOrdersViewProps> = ({
           <Plus className="w-4 h-4" />
           <span>New Order</span>
         </button>
+        <KitchenKotButton />
       </div>
 
       {/* Search + status buttons */}
