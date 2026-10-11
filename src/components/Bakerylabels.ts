@@ -103,7 +103,7 @@ export const bulkOrderLabels = {
   occasionOther: "மற்ற நிகழ்வு",
   deliveryAddress: "டெலிவரி இடம் / முகவரி",
   deliveryAddressPlaceholder: "மண்டப பெயர், கதவு எண், தெரு பெயர், பகுதி...",
-  addressDefaultPickup: "கவுண்டர் பிக்அப் (Royal Sweets Store)",
+  addressDefaultPickup: "கவுண்டர் பிக்அப் (கனகராஜ் கேட்டரிங் & ஸ்வீட்ஸ்)",
   addressDefaultConfirm: "பின்னர் உறுதிப்படுத்தப்படும்",
 
   // Bulk Order Items
@@ -197,3 +197,189 @@ export const invoicesLabels = {
   previewInvoiceTitle: "பில்லைப் பார்",
   printBillBtn: "பில் அச்சிடு",
 };
+
+export const dashboardLabel = {
+  "shop": {
+    "name": "கனகராஜ் கேட்டரிங் & ஸ்வீட்ஸ்"
+  },
+  "dashboard": {
+    "heroTag": "கடை டாஷ்போர்டு & நேரலை பகுப்பாய்வு",
+    "refresh": "புதுப்பி",
+    "syncInfo": "கவுண்டர் #1 – நேரலை சர்வர் இணைப்பு செயலில் உள்ளது",
+    "shiftCashier": "பணியில் உள்ள காசாளர்",
+    "loadErrorTitle": "டாஷ்போர்டை ஏற்ற முடியவில்லை",
+    "retry": "மீண்டும் முயற்சி"
+  },
+  "actions": {
+    "newBill": "புதிய பில் (POS)",
+    "addProduct": "பொருள் சேர்",
+    "createBulkOrder": "மொத்த ஆர்டர் உருவாக்கு",
+    "viewProducts": "பொருட்களைப் பார்"
+  },
+  "kpi": {
+    "todaySales": "இன்றைய விற்பனை",
+    "liveData": "நேரலை தரவு",
+    "todayBills": "இன்றைய பில்கள்",
+    "bills": "பில்கள்",
+    "avgTicket": "சராசரி பில் தொகை",
+    "estimatedProfit": "மதிப்பிடப்பட்ட லாபம்",
+    "grossMargin": "மொத்த லாப விகிதம்",
+    "pendingDeliveries": "நிலுவையில் உள்ள டெலிவரிகள்",
+    "orders": "ஆர்டர்கள்",
+    "viewAlerts": "அறிவிப்புகளைப் பார்",
+    "bulkOrders": "மொத்த ஆர்டர்கள்",
+    "total": "மொத்தம்",
+    "manageOrders": "ஆர்டர்களை நிர்வகி",
+    "lowStock": "குறைந்த இருப்பு பொருட்கள்",
+    "products": "பொருட்கள்",
+    "restock": "இருப்பை நிரப்பு"
+  },
+  "chart": {
+    "todayTitle": "இன்றைய விற்பனை போக்கு (மணிநேரம்)",
+    "weeklyTitle": "வாராந்திர விற்பனை வருவாய்",
+    "todaySubtitle": "பரபரப்பான நேரங்களில் நேரலை வருவாய் நிலவரம்.",
+    "weeklySubtitle": "கடந்த ஏழு நாட்களின் கவுண்டர் செயல்பாடு.",
+    "today": "இன்று",
+    "weekly": "வாரம்",
+    "noSalesToday": "இன்று இதுவரை விற்பனை பதிவாகவில்லை.",
+    "noSalesWeek": "கடந்த 7 நாட்களில் விற்பனை இல்லை."
+  },
+  "top": {
+    "title": "அதிகம் விற்பனையாகும் பொருட்கள்",
+    "last30": "கடந்த 30 நாட்கள்",
+    "viewAll": "அனைத்தையும் பார்",
+    "empty": "இதுவரை பொருள் விற்பனை பதிவாகவில்லை.",
+    "stock": "இருப்பு",
+    "highDemand": "அதிக தேவை",
+    "regular": "வழக்கமானது",
+    "sold": "விற்பனை",
+    "openPos": "POS பில்லிங் திற"
+  },
+  "units": {
+    "kg": "கிலோ",
+    "gm": "கிராம்",
+    "g": "கிராம்",
+    "pcs": "எண்",
+    "pc": "எண்",
+    "nos": "எண்",
+    "ltr": "லிட்டர்",
+    "l": "லிட்டர்",
+    "box": "பெட்டி",
+    "pack": "பாக்கெட்"
+  }
+}
+// utils/formatDateTime.ts
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+export const formatDateTime = (value?: string | number | Date | null): string => {
+  if (!value) return '';
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return String(value); // not a valid date, show as is
+
+  const day = String(d.getDate()).padStart(2, '0');
+  const h24 = d.getHours();
+  const h12 = h24 % 12 || 12;
+  const min = d.getMinutes();
+  const ampm = h24 >= 12 ? 'PM' : 'AM';
+  const time = min === 0 ? `${h12} ${ampm}` : `${h12}:${String(min).padStart(2, '0')} ${ampm}`;
+
+  return `${day}-${MONTHS[d.getMonth()]}-${d.getFullYear()} ${time}`;
+};
+export const sidebar = {
+  "shop": {
+    "name": "கனகராஜ் கேட்டரிங் & ஸ்வீட்ஸ்"
+  },
+  "dashboard": {
+    "heroTag": "கடை டாஷ்போர்டு & நேரலை பகுப்பாய்வு",
+    "refresh": "புதுப்பி",
+    "syncInfo": "கவுண்டர் #1 – நேரலை சர்வர் இணைப்பு செயலில் உள்ளது",
+    "shiftCashier": "பணியில் உள்ள காசாளர்",
+    "loadErrorTitle": "டாஷ்போர்டை ஏற்ற முடியவில்லை",
+    "retry": "மீண்டும் முயற்சி"
+  },
+  "actions": {
+    "newBill": "புதிய பில் (POS)",
+    "addProduct": "பொருள் சேர்",
+    "createBulkOrder": "மொத்த ஆர்டர் உருவாக்கு",
+    "viewProducts": "பொருட்களைப் பார்"
+  },
+  "kpi": {
+    "todaySales": "இன்றைய விற்பனை",
+    "liveData": "நேரலை தரவு",
+    "todayBills": "இன்றைய பில்கள்",
+    "bills": "பில்கள்",
+    "avgTicket": "சராசரி பில் தொகை",
+    "estimatedProfit": "மதிப்பிடப்பட்ட லாபம்",
+    "grossMargin": "மொத்த லாப விகிதம்",
+    "pendingDeliveries": "நிலுவையில் உள்ள டெலிவரிகள்",
+    "orders": "ஆர்டர்கள்",
+    "viewAlerts": "அறிவிப்புகளைப் பார்",
+    "bulkOrders": "மொத்த ஆர்டர்கள்",
+    "total": "மொத்தம்",
+    "manageOrders": "ஆர்டர்களை நிர்வகி",
+    "lowStock": "குறைந்த இருப்பு பொருட்கள்",
+    "products": "பொருட்கள்",
+    "restock": "இருப்பை நிரப்பு"
+  },
+  "chart": {
+    "todayTitle": "இன்றைய விற்பனை போக்கு (மணிநேரம்)",
+    "weeklyTitle": "வாராந்திர விற்பனை வருவாய்",
+    "todaySubtitle": "பரபரப்பான நேரங்களில் நேரலை வருவாய் நிலவரம்.",
+    "weeklySubtitle": "கடந்த ஏழு நாட்களின் கவுண்டர் செயல்பாடு.",
+    "today": "இன்று",
+    "weekly": "வாரம்",
+    "noSalesToday": "இன்று இதுவரை விற்பனை பதிவாகவில்லை.",
+    "noSalesWeek": "கடந்த 7 நாட்களில் விற்பனை இல்லை."
+  },
+  "top": {
+    "title": "அதிகம் விற்பனையாகும் பொருட்கள்",
+    "last30": "கடந்த 30 நாட்கள்",
+    "viewAll": "அனைத்தையும் பார்",
+    "empty": "இதுவரை பொருள் விற்பனை பதிவாகவில்லை.",
+    "stock": "இருப்பு",
+    "highDemand": "அதிக தேவை",
+    "regular": "வழக்கமானது",
+    "sold": "விற்பனை",
+    "openPos": "POS பில்லிங் திற"
+  },
+  "units": {
+    "kg": "கிலோ",
+    "gm": "கிராம்",
+    "g": "கிராம்",
+    "pcs": "எண்",
+    "pc": "எண்",
+    "nos": "எண்",
+    "ltr": "லிட்டர்",
+    "l": "லிட்டர்",
+    "box": "பெட்டி",
+    "pack": "பாக்கெட்"
+  },
+  "sidebar": {
+    "nav": {
+      "dashboard": "டாஷ்போர்டு",
+      "billing": "பில்லிங் (POS)",
+      "products": "பொருட்கள்",
+      "bulk-orders": "மொத்த ஆர்டர்கள்",
+      "delivery-alerts": "டெலிவரி அறிவிப்புகள்",
+      "invoices": "பில் விவரங்கள்"
+    },
+    "badgeLow": "குறைவு",
+    "badgeDueSoon": "விரைவில்",
+    "quickNewBill": "புதிய பில்",
+    "quickNewBillPos": "புதிய பில் (POS)",
+    "expandSidebar": "பக்கப்பட்டியை விரி",
+    "collapseSidebar": "பக்கப்பட்டியை மடக்கு",
+    "closeSidebar": "பக்கப்பட்டியை மூடு",
+    "openSidebar": "பக்கப்பட்டியைத் திற",
+    "counterActive": "கவுண்டர் #1 செயலில் உள்ளது"
+  },
+  "header": {
+    "newBill": "புதிய பில் (POS)",
+    "newBillShort": "POS",
+    "headCashier": "தலைமை காசாளர்",
+    "openMenu": "மெனுவைத் திற",
+    "expandSidebar": "பக்கப்பட்டியை விரி",
+    "collapseSidebar": "பக்கப்பட்டியை மடக்கு",
+    "logoAlt": "கனகராஜ் கேட்டரிங் & ஸ்வீட்ஸ் லோகோ"
+  }
+}

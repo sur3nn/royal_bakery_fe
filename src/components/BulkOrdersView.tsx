@@ -32,8 +32,8 @@ const simplify = (o: any) => ({
   })),
 });
 
- const API = "https://indigo-kangaroo-864288.hostingersite.com"  //import.meta.env.VITE_API_URL; // change if your API base is different
-//const API = "http://localhost:5000"
+// const API = "https://indigo-kangaroo-864288.hostingersite.com"  //import.meta.env.VITE_API_URL; // change if your API base is different
+const API = "http://localhost:5000"
 const downloadKot = async (
   id: number,
   type: 'kitchen' | 'packing',

@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Plus, 
-  Receipt, 
-  PackagePlus, 
-  ShoppingBag, 
-  Package, 
-  TrendingUp, 
-  Truck, 
-  AlertTriangle, 
-  ArrowUpRight, 
+import {
+  Plus,
+  Receipt,
+  PackagePlus,
+  ShoppingBag,
+  Package,
+  TrendingUp,
+  Truck,
+  AlertTriangle,
+  ArrowUpRight,
   ChevronRight,
   Sparkles,
   RefreshCw,
@@ -18,6 +18,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../redux/store';
 import { FetchDashboardAction } from '../redux/actions/bakeryActions';
 import { Product, Invoice, BulkOrder, NavigationTab } from '../types';
+import{ dashboardLabel as ta } from '../components/Bakerylabels'
 
 interface DashboardViewProps {
   products?: Product[];
@@ -28,6 +29,28 @@ interface DashboardViewProps {
   onOpenAddProduct: () => void;
   onOpenCreateBulkOrder: () => void;
 }
+
+const REFRESH_MS = 60_000; // dashboard refreshes itself every minute
+
+const toNum = (v: any) => Number(v) || 0;
+const money = (v: any) => toNum(v).toLocaleString('en-IN');
+const qty = (v: any) => String(+toNum(v).toFixed(2));
+
+// kg -> கிலோ, gm -> கிராம், etc. Unknown units are shown as they come from the DB
+const unitTa = (u: any, fallback = 'kg'): string => {
+  const raw = String(u || fallback);
+  return (ta.units as Record<string, string>)[raw.toLowerCase()] ?? raw;
+};
+
+// Name of the logged-in user, if your login code stores it as JSON under "user"
+const getStoredUserName = (): string => {
+  try {
+    const raw = localStorage.getItem('user');
+    return raw ? String(JSON.parse(raw)?.name || '') : '';
+  } catch {
+    return '';
+  }
+};
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
   products = [],
@@ -44,50 +67,60 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [chartView, setChartView] = useState<'today' | 'weekly'>('today');
   const [hoveredPoint, setHoveredPoint] = useState<number | null>(null);
 
+  // Load on open, then refresh every minute
   useEffect(() => {
     dispatch(FetchDashboardAction({}));
+    const timer = setInterval(() => dispatch(FetchDashboardAction({})), REFRESH_MS);
+    return () => clearInterval(timer);
   }, [dispatch]);
 
-  // Read live calculations from DashboardData with safe fallbacks
-  const todaySales = DashboardData?.todaySales ?? DashboardData?.today_sales ?? 0;
-  const todayBillsCount = DashboardData?.todayBills ?? DashboardData?.today_bills ?? 0;
-  const avgTicket = DashboardData?.avgTicket ?? DashboardData?.avg_ticket ?? 0;
-  const estimatedProfit = DashboardData?.estimatedProfit ?? DashboardData?.estimated_profit ?? 0;
+  const hasData = !!DashboardData;
+  const cashierName = getStoredUserName();
 
-  const pendingDeliveries = DashboardData?.pendingDeliveries || bulkOrders.filter(
-    (b: any) => b.status === 'Upcoming' || b.status === 'Preparing' || b.status === 'Ready'
-  );
+  // ---------- KPI values (all come from the API) ----------
+  const todaySales = toNum(DashboardData?.todaySales ?? DashboardData?.today_sales);
+  const todayBillsCount = toNum(DashboardData?.todayBills ?? DashboardData?.today_bills ?? DashboardData?.todayOrders);
+  const avgTicket = toNum(DashboardData?.avgTicket ?? DashboardData?.avg_ticket);
+  const estimatedProfit = toNum(DashboardData?.estimatedProfit ?? DashboardData?.estimated_profit);
+  const profitMargin = toNum(DashboardData?.profitMargin ?? DashboardData?.profit_margin);
 
-  const lowStockProducts = DashboardData?.lowStockProducts || products.filter(
-    (p: any) => Number(p.stock) <= Number(p.minStock ?? p.min_stock ?? 5)
-  );
+  // Pending deliveries: use the API count; only fall back to the props before data arrives
+  const pendingList: any[] = Array.isArray(DashboardData?.pendingDeliveries)
+    ? DashboardData.pendingDeliveries
+    : hasData
+    ? []
+    : bulkOrders.filter((b: any) => b.status === 'Upcoming' || b.status === 'Preparing' || b.status === 'Ready');
+  const pendingCount = toNum(DashboardData?.pendingDeliveriesCount ?? pendingList.length);
 
-  const topProducts = DashboardData?.topProducts?.length 
-    ? DashboardData.topProducts 
+  // Low stock
+  const lowStockList: any[] = Array.isArray(DashboardData?.lowStockProducts)
+    ? DashboardData.lowStockProducts
+    : hasData
+    ? []
+    : products.filter((p: any) => Number(p.stock) <= Number(p.minStock ?? p.min_stock ?? 5));
+  const lowStockCount = toNum(DashboardData?.lowStockCount ?? lowStockList.length);
+
+  const bulkOrdersTotal = toNum(DashboardData?.bulkOrdersTotal ?? bulkOrders.length);
+
+  // Top selling: if the API answered, trust it (an empty list means no sales yet)
+  const topProducts: any[] = Array.isArray(DashboardData?.topProducts)
+    ? DashboardData.topProducts
+    : hasData
+    ? []
     : products.slice(0, 5);
 
-  const hourlyData = DashboardData?.hourlyData || [
-    { time: '9 AM', sales: 4200, bills: 4 },
-    { time: '11 AM', sales: 7800, bills: 7 },
-    { time: '1 PM', sales: 14200, bills: 12 },
-    { time: '3 PM', sales: 12100, bills: 9 },
-    { time: '5 PM', sales: 21400, bills: 18 },
-    { time: '7 PM', sales: 29800, bills: 24 },
-    { time: '9 PM', sales: 11500, bills: 8 },
-  ];
-
-  const weeklyData = DashboardData?.weeklyData || [
-    { time: 'Mon', sales: 42000, bills: 48 },
-    { time: 'Tue', sales: 48500, bills: 55 },
-    { time: 'Wed', sales: 45000, bills: 52 },
-    { time: 'Thu', sales: 52000, bills: 60 },
-    { time: 'Fri', sales: 68000, bills: 78 },
-    { time: 'Sat', sales: 88500, bills: 98 },
-    { time: 'Sun', sales: 94000, bills: 110 },
-  ];
+  // ---------- Charts ----------
+  const hourlyData: any[] = Array.isArray(DashboardData?.hourlyData) ? DashboardData.hourlyData : [];
+  const weeklyData: any[] = Array.isArray(DashboardData?.weeklyData) ? DashboardData.weeklyData : [];
 
   const activeChartData = chartView === 'today' ? hourlyData : weeklyData;
-  const maxSale = Math.max(...activeChartData.map((d: any) => d.sales), 1000) * 1.25;
+  const chartHasSales = activeChartData.some((d: any) => toNum(d.sales) > 0);
+  const maxSale = Math.max(...activeChartData.map((d: any) => toNum(d.sales)), 1000) * 1.25;
+
+  const switchChart = (view: 'today' | 'weekly') => {
+    setHoveredPoint(null);
+    setChartView(view);
+  };
 
   return (
     <div className="space-y-6 pb-12">
@@ -111,14 +144,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {DashboardError && !DashboardData && (
         <div className="bg-[#FFF0F3] border border-[#C94F6D]/30 rounded-2xl p-6 text-center space-y-3">
           <AlertTriangle className="w-8 h-8 text-[#C94F6D] mx-auto" />
-          <h3 className="text-base font-bold text-[#29252A]">Unable to Load Dashboard</h3>
+          <h3 className="text-base font-bold text-[#29252A]">{ta.dashboard.loadErrorTitle}</h3>
           <p className="text-xs text-[#756B70] max-w-md mx-auto">{String(DashboardError)}</p>
           <button
             onClick={() => dispatch(FetchDashboardAction({}))}
             className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#C94F6D] text-white text-xs font-semibold rounded-xl hover:bg-[#A83D58] transition-colors cursor-pointer"
           >
             <RefreshCw className="w-3.5 h-3.5" />
-            <span>Retry Connection</span>
+            <span>{ta.dashboard.retry}</span>
           </button>
         </div>
       )}
@@ -129,18 +162,29 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="space-y-2 max-w-xl">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-[#C94F6D] tracking-wider uppercase">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-[#C94F6D]">
               <Sparkles className="w-4 h-4 text-[#C94F6D]" />
-              <span>Store Dashboard & Real-Time Analytics</span>
+              <span>{ta.dashboard.heroTag}</span>
+              <button
+                onClick={() => dispatch(FetchDashboardAction({}))}
+                title={ta.dashboard.refresh}
+                className="ml-1 p-1 rounded-md hover:bg-white/70 cursor-pointer"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${DashboardLoad ? 'animate-spin' : ''}`} />
+              </button>
             </div>
 
             <h1 className="text-2xl sm:text-3xl font-extrabold text-[#29252A] tracking-tight">
-              Royal Sweets & Bakery
+              {ta.shop.name}
             </h1>
 
             <p className="text-xs sm:text-sm text-[#756B70] leading-relaxed">
-              Live backend sync active for Counter #1 • Shift Cashier:{' '}
-              <span className="font-semibold text-[#C94F6D]">Anil Kumar</span>
+              {ta.dashboard.syncInfo}
+              {cashierName && (
+                <>
+                  {' '}• {ta.dashboard.shiftCashier}: <span className="font-semibold text-[#C94F6D]">{cashierName}</span>
+                </>
+              )}
             </p>
           </div>
 
@@ -151,7 +195,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#C94F6D] hover:bg-[#A83D58] active:scale-[0.98] text-white font-semibold text-xs sm:text-sm shadow-sm shadow-[#C94F6D]/25 transition-all cursor-pointer"
             >
               <Plus className="w-4 h-4 stroke-[2.5]" />
-              <span>New Bill (POS)</span>
+              <span>{ta.actions.newBill}</span>
             </button>
 
             <button
@@ -159,7 +203,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-white hover:bg-[#FFF4F6] border border-[#EDE2E5] text-[#29252A] font-semibold text-xs sm:text-sm shadow-2xs transition-all cursor-pointer"
             >
               <PackagePlus className="w-4 h-4 text-[#C94F6D]" />
-              <span>Add Product</span>
+              <span>{ta.actions.addProduct}</span>
             </button>
 
             <button
@@ -167,7 +211,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-white hover:bg-[#FFF4F6] border border-[#EDE2E5] text-[#29252A] font-semibold text-xs sm:text-sm shadow-2xs transition-all cursor-pointer"
             >
               <FileSpreadsheet className="w-4 h-4 text-[#C94F6D]" />
-              <span>Create Bulk Order</span>
+              <span>{ta.actions.createBulkOrder}</span>
             </button>
 
             <button
@@ -175,7 +219,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-white hover:bg-[#FFF4F6] border border-[#EDE2E5] text-[#29252A] font-semibold text-xs sm:text-sm shadow-2xs transition-all cursor-pointer"
             >
               <Package className="w-4 h-4 text-[#C94F6D]" />
-              <span>View Products</span>
+              <span>{ta.actions.viewProducts}</span>
             </button>
           </div>
         </div>
@@ -186,18 +230,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* Card 1: Today's Sales */}
         <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#EDE2E5] shadow-xs hover:border-[#C94F6D]/40 transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#756B70]">Today's Sales</span>
+            <span className="text-xs font-semibold text-[#756B70]">{ta.kpi.todaySales}</span>
             <div className="w-8 h-8 rounded-full bg-[#FCE7EC] text-[#C94F6D] flex items-center justify-center font-bold text-sm">
               ₹
             </div>
           </div>
           <div className="mt-3">
             <h3 className="text-2xl font-extrabold text-[#C94F6D]">
-              ₹{todaySales.toLocaleString()}
+              ₹{money(todaySales)}
             </h3>
             <div className="flex items-center gap-1 text-[11px] font-semibold text-[#3FA56B] mt-1">
               <ArrowUpRight className="w-3.5 h-3.5" />
-              <span>Live backend data</span>
+              <span>{ta.kpi.liveData}</span>
             </div>
           </div>
         </div>
@@ -205,17 +249,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* Card 2: Today's Bills */}
         <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#EDE2E5] shadow-xs hover:border-[#EDE2E5]/80 transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#756B70]">Today's Bills</span>
+            <span className="text-xs font-semibold text-[#756B70]">{ta.kpi.todayBills}</span>
             <div className="w-8 h-8 rounded-full bg-[#F0EBF8] text-[#8E5EC7] flex items-center justify-center">
               <Receipt className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-3">
             <h3 className="text-2xl font-extrabold text-[#29252A]">
-              {todayBillsCount} Bills
+              {todayBillsCount} {ta.kpi.bills}
             </h3>
             <p className="text-[11px] text-[#756B70] mt-1 font-medium">
-              Avg ticket ₹{avgTicket.toLocaleString()}
+              {ta.kpi.avgTicket} ₹{money(avgTicket)}
             </p>
           </div>
         </div>
@@ -223,82 +267,82 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* Card 3: Estimated Profit */}
         <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#EDE2E5] shadow-xs hover:border-[#3FA56B]/40 transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#756B70]">Estimated Profit</span>
+            <span className="text-xs font-semibold text-[#756B70]">{ta.kpi.estimatedProfit}</span>
             <div className="w-8 h-8 rounded-full bg-[#EAF7EE] text-[#3FA56B] flex items-center justify-center">
               <TrendingUp className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-3">
             <h3 className="text-2xl font-extrabold text-[#3FA56B]">
-              ₹{estimatedProfit.toLocaleString()}
+              ₹{money(estimatedProfit)}
             </h3>
             <p className="text-[11px] text-[#3FA56B] mt-1 font-semibold">
-              32.5% Gross Margin
+              {profitMargin}% {ta.kpi.grossMargin}
             </p>
           </div>
         </div>
 
         {/* Card 4: Pending Deliveries */}
-        <div 
+        <div
           onClick={() => onNavigate('delivery-alerts')}
           className="bg-white rounded-2xl p-4 sm:p-5 border border-[#EDE2E5] shadow-xs hover:border-[#D9A441]/50 cursor-pointer transition-all group"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#756B70]">Pending Deliveries</span>
+            <span className="text-xs font-semibold text-[#756B70]">{ta.kpi.pendingDeliveries}</span>
             <div className="w-8 h-8 rounded-full bg-[#FFF3D6] text-[#D9A441] flex items-center justify-center">
               <Truck className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-3">
             <h3 className="text-2xl font-extrabold text-[#9E6B20]">
-              {pendingDeliveries.length} Orders
+              {pendingCount} {ta.kpi.orders}
             </h3>
             <div className="flex items-center gap-1 text-[11px] font-semibold text-[#D9A441] mt-1 group-hover:translate-x-0.5 transition-transform">
-              <span>View Alerts</span>
+              <span>{ta.kpi.viewAlerts}</span>
               <ChevronRight className="w-3.5 h-3.5" />
             </div>
           </div>
         </div>
 
         {/* Card 5: Bulk Orders */}
-        <div 
+        <div
           onClick={() => onNavigate('bulk-orders')}
           className="bg-white rounded-2xl p-4 sm:p-5 border border-[#EDE2E5] shadow-xs hover:border-[#4F86C6]/50 cursor-pointer transition-all group"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#756B70]">Bulk Orders</span>
+            <span className="text-xs font-semibold text-[#756B70]">{ta.kpi.bulkOrders}</span>
             <div className="w-8 h-8 rounded-full bg-[#EBF3FB] text-[#4F86C6] flex items-center justify-center">
               <ShoppingBag className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-3">
             <h3 className="text-2xl font-extrabold text-[#29252A]">
-              {DashboardData?.bulkOrdersTotal ?? bulkOrders.length} Total
+              {bulkOrdersTotal} {ta.kpi.total}
             </h3>
             <div className="flex items-center gap-1 text-[11px] font-semibold text-[#4F86C6] mt-1 group-hover:translate-x-0.5 transition-transform">
-              <span>Manage Orders</span>
+              <span>{ta.kpi.manageOrders}</span>
               <ChevronRight className="w-3.5 h-3.5" />
             </div>
           </div>
         </div>
 
         {/* Card 6: Low Stock Items */}
-        <div 
+        <div
           onClick={() => onNavigate('products')}
           className="bg-white rounded-2xl p-4 sm:p-5 border border-[#EDE2E5] shadow-xs hover:border-[#D9535F]/50 cursor-pointer transition-all group"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#756B70]">Low Stock Items</span>
+            <span className="text-xs font-semibold text-[#756B70]">{ta.kpi.lowStock}</span>
             <div className="w-8 h-8 rounded-full bg-[#FFF0F3] text-[#D9535F] flex items-center justify-center">
               <AlertTriangle className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-3">
             <h3 className="text-2xl font-extrabold text-[#D9535F]">
-              {lowStockProducts.length} Products
+              {lowStockCount} {ta.kpi.products}
             </h3>
             <div className="flex items-center gap-1 text-[11px] font-semibold text-[#D9535F] mt-1 group-hover:translate-x-0.5 transition-transform">
-              <span>Restock Inventory</span>
+              <span>{ta.kpi.restock}</span>
               <ChevronRight className="w-3.5 h-3.5" />
             </div>
           </div>
@@ -307,41 +351,39 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* 3. CHARTS AND TOP SELLING PRODUCTS */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left (2/3 width): Today's Sales Trend (Hourly) */}
+        {/* Left (2/3 width): Sales trend */}
         <div className="lg:col-span-2 bg-white rounded-2xl p-5 sm:p-6 border border-[#EDE2E5] shadow-xs flex flex-col justify-between">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
             <div>
               <h2 className="text-base sm:text-lg font-bold text-[#29252A]">
-                {chartView === 'today' ? "Today's Sales Trend (Hourly)" : "Weekly Sales Revenue"}
+                {chartView === 'today' ? ta.chart.todayTitle : ta.chart.weeklyTitle}
               </h2>
               <p className="text-xs text-[#756B70] mt-0.5">
-                {chartView === 'today'
-                  ? 'Real-time revenue pattern across peak counter hours.'
-                  : 'Seven-day cumulative counter performance analysis.'}
+                {chartView === 'today' ? ta.chart.todaySubtitle : ta.chart.weeklySubtitle}
               </p>
             </div>
 
             {/* Toggle Switch */}
             <div className="flex items-center p-1 bg-[#FFF9F5] border border-[#EDE2E5] rounded-xl self-start sm:self-auto">
               <button
-                onClick={() => setChartView('today')}
+                onClick={() => switchChart('today')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                   chartView === 'today'
                     ? 'bg-[#C94F6D] text-white shadow-xs'
                     : 'text-[#756B70] hover:text-[#29252A]'
                 }`}
               >
-                Today
+                {ta.chart.today}
               </button>
               <button
-                onClick={() => setChartView('weekly')}
+                onClick={() => switchChart('weekly')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                   chartView === 'weekly'
                     ? 'bg-[#C94F6D] text-white shadow-xs'
                     : 'text-[#756B70] hover:text-[#29252A]'
                 }`}
               >
-                Weekly
+                {ta.chart.weekly}
               </button>
             </div>
           </div>
@@ -379,7 +421,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 if (!activeChartData || activeChartData.length === 0) return null;
                 const points = activeChartData.map((d: any, index: number) => {
                   const x = (index / (activeChartData.length - 1 || 1)) * 700;
-                  const y = 220 - (Number(d.sales || 0) / maxSale) * 190;
+                  const y = 220 - (toNum(d.sales) / maxSale) * 190;
                   return { x, y, data: d };
                 });
 
@@ -432,19 +474,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               })()}
             </svg>
 
+            {/* Empty chart message */}
+            {hasData && !chartHasSales && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <span className="text-xs font-semibold text-[#756B70] bg-white/80 px-3 py-1.5 rounded-lg">
+                  {chartView === 'today' ? ta.chart.noSalesToday : ta.chart.noSalesWeek}
+                </span>
+              </div>
+            )}
+
             {/* Hover Tooltip */}
             {hoveredPoint !== null && activeChartData[hoveredPoint] && (
-              <div 
+              <div
                 className="absolute top-2 left-1/2 -translate-x-1/2 bg-[#29252A] text-white px-3 py-1.5 rounded-lg shadow-lg text-xs pointer-events-none flex items-center gap-2"
               >
                 <span className="font-semibold text-white">
                   {activeChartData[hoveredPoint].time}:
                 </span>
                 <span className="text-[#FFF0F3] font-bold">
-                  ₹{Number(activeChartData[hoveredPoint].sales || 0).toLocaleString()}
+                  ₹{money(activeChartData[hoveredPoint].sales)}
                 </span>
                 <span className="text-[#EDE2E5] text-[10px]">
-                  ({activeChartData[hoveredPoint].bills} bills)
+                  ({toNum(activeChartData[hoveredPoint].bills)} {ta.kpi.bills})
                 </span>
               </div>
             )}
@@ -462,14 +513,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="bg-white rounded-2xl p-5 sm:p-6 border border-[#EDE2E5] shadow-xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between pb-4 border-b border-[#EDE2E5]">
-              <h2 className="text-base sm:text-lg font-bold text-[#29252A]">
-                Top Selling Products
-              </h2>
+              <div>
+                <h2 className="text-base sm:text-lg font-bold text-[#29252A]">
+                  {ta.top.title}
+                </h2>
+                <p className="text-[11px] text-[#756B70]">{ta.top.last30}</p>
+              </div>
               <button
                 onClick={() => onNavigate('products')}
                 className="text-xs font-semibold text-[#C94F6D] hover:text-[#A83D58] flex items-center gap-1 cursor-pointer transition-colors"
               >
-                <span>View All</span>
+                <span>{ta.top.viewAll}</span>
                 <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -477,7 +531,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {/* List of top selling products */}
             {topProducts.length === 0 ? (
               <div className="py-8 text-center text-xs text-[#756B70]">
-                No product sales recorded yet.
+                {ta.top.empty}
               </div>
             ) : (
               <div className="divide-y divide-[#EDE2E5]/70 mt-1">
@@ -503,22 +557,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           {product.name}
                         </p>
                         <p className="text-[11px] text-[#756B70] truncate">
-                          {product.category} • {product.stock} {String(product.unit || 'kg').toLowerCase()} stock
+                          {product.category} • {ta.top.stock}: {qty(product.stock)} {unitTa(product.unit)}
                         </p>
                       </div>
                     </div>
 
                     <div className="text-right shrink-0">
                       <p className="text-xs sm:text-sm font-extrabold text-[#29252A]">
-                        ₹{product.sellingPrice || product.selling_price} <span className="text-[10px] text-[#756B70] font-normal">/ {product.unit}</span>
+                        ₹{money(product.sellingPrice ?? product.selling_price)} <span className="text-[10px] text-[#756B70] font-normal">/ {unitTa(product.unit)}</span>
                       </p>
                       {product.isHighDemand || product.is_high_demand ? (
                         <span className="inline-block mt-0.5 text-[10px] font-semibold text-[#279A57] bg-[#EAF7EE] px-2 py-0.5 rounded-full border border-[#279A57]/20">
-                          High Demand
+                          {ta.top.highDemand}
                         </span>
                       ) : (
                         <span className="inline-block mt-0.5 text-[10px] text-[#756B70]">
-                          Regular
+                          {toNum(product.soldQty) > 0
+                            ? `${qty(product.soldQty)} ${unitTa(product.unit, '')} ${ta.top.sold}`
+                            : ta.top.regular}
                         </span>
                       )}
                     </div>
@@ -533,7 +589,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             className="w-full mt-4 py-2.5 rounded-xl bg-[#FFF0F3] hover:bg-[#FCE7EC] text-[#C94F6D] font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
           >
             <Receipt className="w-3.5 h-3.5" />
-            <span>Open POS Register</span>
+            <span>{ta.top.openPos}</span>
           </button>
         </div>
       </div>

@@ -1,12 +1,12 @@
 import React from 'react';
-import { 
-  LayoutDashboard, 
-  Receipt, 
-  Package, 
-  ShoppingBag, 
-  BellRing, 
-  FileText, 
-  PlusCircle, 
+import {
+  LayoutDashboard,
+  Receipt,
+  Package,
+  ShoppingBag,
+  BellRing,
+  FileText,
+  PlusCircle,
   ChevronRight,
   ChevronLeft,
   Cake,
@@ -15,6 +15,9 @@ import {
   PanelLeftOpen
 } from 'lucide-react';
 import { NavigationTab } from '../types';
+import {sidebar as ta}  from '../components/Bakerylabels'
+import { LOGO_SRC } from './Header';
+import { useNavigate } from 'react-router-dom';
 
 interface SidebarProps {
   currentTab: NavigationTab;
@@ -28,6 +31,8 @@ interface SidebarProps {
   isCollapsed: boolean;
   onToggleCollapse: () => void;
 }
+
+const S = ta.sidebar;
 
 export const Sidebar: React.FC<SidebarProps> = ({
   currentTab,
@@ -44,50 +49,50 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const navItems = [
     {
       id: 'dashboard' as NavigationTab,
-      label: 'Dashboard',
+      label: S.nav['dashboard'],
       icon: LayoutDashboard,
       badge: null,
     },
     {
       id: 'billing' as NavigationTab,
-      label: 'Billing (POS)',
+      label: S.nav['billing'],
       icon: Receipt,
       badge: null,
     },
     {
       id: 'products' as NavigationTab,
-      label: 'Products',
+      label: S.nav['products'],
       icon: Package,
-      badge: lowStockCount > 0 ? `${lowStockCount} Low` : null,
+      badge: lowStockCount > 0 ? `${lowStockCount} ${S.badgeLow}` : null,
       badgeType: 'warning',
     },
     {
       id: 'bulk-orders' as NavigationTab,
-      label: 'Bulk Orders',
+      label: S.nav['bulk-orders'],
       icon: ShoppingBag,
       badge: bulkOrdersCount > 0 ? `${bulkOrdersCount}` : null,
       badgeType: 'rose',
     },
     {
       id: 'delivery-alerts' as NavigationTab,
-      label: 'Delivery Alerts',
+      label: S.nav['delivery-alerts'],
       icon: BellRing,
-      badge: dueSoonDeliveriesCount > 0 ? 'Due Soon' : null,
+      badge: dueSoonDeliveriesCount > 0 ? S.badgeDueSoon : null,
       badgeType: 'danger',
     },
     {
       id: 'invoices' as NavigationTab,
-      label: 'Invoices',
+      label: S.nav['invoices'],
       icon: FileText,
       badge: null,
     },
   ];
-
+ const navigate = useNavigate();
   return (
     <>
       {/* Mobile Backdrop */}
       {isOpenMobile && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/40 backdrop-blur-xs z-40 lg:hidden"
           onClick={onCloseMobile}
         />
@@ -102,10 +107,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
         }`}
       >
         {/* Brand Header */}
-        <div 
+        <div
           className={`py-4 border-b border-[#EDE2E5]/70 flex items-center transition-all ${
-            isCollapsed 
-              ? 'px-2 justify-center flex-col gap-2' 
+            isCollapsed
+              ? 'px-2 justify-center flex-col gap-2'
               : 'px-4 justify-between'
           }`}
         >
@@ -114,18 +119,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
               {/* Compact Logo when collapsed */}
               <button
                 onClick={onToggleCollapse}
-                className="w-10 h-10 rounded-xl bg-[#C94F6D] text-white flex items-center justify-center shadow-sm shadow-[#C94F6D]/30 hover:bg-[#A83D58] transition-colors cursor-pointer"
-                title="Royal Sweets - Click to expand (Open)"
-                aria-label="Expand sidebar"
+                className="w-10 h-10 rounded-xl text-white flex items-center justify-center shadow-sm shadow-[#C94F6D]/30 hover:bg-[#A83D58] transition-colors cursor-pointer"
+                title={`${ta.shop.name} - ${S.expandSidebar}`}
+                aria-label={S.expandSidebar}
               >
-                <Cake className="w-5 h-5 stroke-[2.2]" />
+                 <img
+                               src={LOGO_SRC}
+                               alt={""}
+                               className="h-11 w-auto object-contain select-none shrink-0"
+                               draggable={false}
+                             />
               </button>
               {/* Expand button under logo */}
-              <button 
+              <button
                 onClick={onToggleCollapse}
                 className="hidden lg:flex p-1.5 rounded-lg text-[#756B70] hover:bg-[#FFF4F6] hover:text-[#C94F6D] transition-colors cursor-pointer"
-                title="Open / Expand sidebar"
-                aria-label="Expand sidebar"
+                title={S.expandSidebar}
+                aria-label={S.expandSidebar}
               >
                 <PanelLeftOpen className="w-4 h-4" />
               </button>
@@ -133,34 +143,36 @@ export const Sidebar: React.FC<SidebarProps> = ({
           ) : (
             <>
               <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-xl bg-[#C94F6D] text-white flex items-center justify-center shadow-sm shadow-[#C94F6D]/30 shrink-0">
-                  <Cake className="w-5 h-5 stroke-[2.2]" />
-                </div>
+                {/* <div className="w-10 h-10 rounded-xl bg-[#C94F6D] text-white flex items-center justify-center shadow-sm shadow-[#C94F6D]/30 shrink-0"> */}
+                  <img
+                               src={LOGO_SRC}
+                               alt={""}
+                               className="h-11 w-auto object-contain select-none shrink-0"
+                               draggable={false}
+                             />
+                {/* </div> */}
                 <div className="min-w-0">
                   <h1 className="font-bold text-base text-[#29252A] tracking-tight leading-tight truncate">
-                    Royal Sweets
+                    {ta.shop.name}
                   </h1>
-                  <p className="text-[10px] font-semibold text-[#756B70] tracking-wider uppercase truncate">
-                    Bakery ERP & POS
-                  </p>
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-1">
                 {/* Desktop Collapse button */}
-                <button 
+                <button
                   onClick={onToggleCollapse}
                   className="hidden lg:flex p-1.5 rounded-lg text-[#756B70] hover:bg-[#FFF4F6] hover:text-[#C94F6D] transition-colors cursor-pointer"
-                  title="Close / Collapse sidebar"
-                  aria-label="Collapse sidebar"
+                  title={S.collapseSidebar}
+                  aria-label={S.collapseSidebar}
                 >
                   <PanelLeftClose className="w-4 h-4" />
                 </button>
                 {/* Mobile close button */}
-                <button 
-                  onClick={onCloseMobile} 
+                <button
+                  onClick={onCloseMobile}
                   className="lg:hidden p-1.5 rounded-lg text-[#756B70] hover:bg-[#FFF4F6] hover:text-[#C94F6D] cursor-pointer"
-                  aria-label="Close sidebar"
+                  aria-label={S.closeSidebar}
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -172,22 +184,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Quick New Bill Action Button */}
         <div className={`transition-all ${isCollapsed ? 'p-2' : 'p-4 pb-2'}`}>
           <button
-            onClick={() => {
-              onQuickNewBill();
-              onCloseMobile();
-            }}
+           onClick={() => {
+  navigate('/billing');   // always opens the Billing page
+  onQuickNewBill();
+  onCloseMobile();
+}}
             className={`group relative w-full flex items-center justify-center rounded-xl bg-[#C94F6D] hover:bg-[#A83D58] active:scale-[0.99] text-white font-semibold shadow-sm shadow-[#C94F6D]/25 transition-all duration-150 cursor-pointer ${
               isCollapsed ? 'p-3' : 'px-4 py-3 gap-2.5 text-sm'
             }`}
-            title={isCollapsed ? "Quick New Bill (POS)" : undefined}
+            title={isCollapsed ? S.quickNewBillPos : undefined}
           >
             <PlusCircle className="w-4 h-4 stroke-[2.5]" />
-            {!isCollapsed && <span>Quick New Bill</span>}
+            {!isCollapsed && <span>{S.quickNewBill}</span>}
 
             {/* Tooltip for collapsed view */}
             {isCollapsed && (
               <div className="absolute left-full ml-3 px-2.5 py-1.5 bg-[#29252A] text-white text-xs font-semibold rounded-lg shadow-lg whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 z-50 pointer-events-none">
-                Quick New Bill (POS)
+                {S.quickNewBillPos}
               </div>
             )}
           </button>
@@ -273,13 +286,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
             className={`w-full flex items-center rounded-xl text-xs font-semibold text-[#756B70] hover:text-[#C94F6D] hover:bg-[#FFF4F6] transition-all cursor-pointer ${
               isCollapsed ? 'justify-center p-2.5' : 'justify-between px-3 py-2'
             }`}
-            title={isCollapsed ? "Open sidebar (Expand)" : "Close sidebar (Collapse)"}
-            aria-label={isCollapsed ? "Open sidebar" : "Close sidebar"}
+            title={isCollapsed ? S.openSidebar : S.closeSidebar}
+            aria-label={isCollapsed ? S.openSidebar : S.closeSidebar}
           >
             {!isCollapsed && (
               <span className="flex items-center gap-2">
                 <PanelLeftClose className="w-4 h-4 text-[#756B70]" />
-                <span>Collapse sidebar</span>
+                <span>{S.collapseSidebar}</span>
               </span>
             )}
             {isCollapsed ? (
@@ -290,38 +303,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </button>
         </div>
 
-        {/* Decorative faint bakery watermark & Cashier info */}
+        {/* Counter status */}
         <div className="p-3 border-t border-[#EDE2E5]/80 relative overflow-hidden bg-gradient-to-b from-white to-[#FFF9F5]">
           {!isCollapsed ? (
             <div className="relative z-10 flex items-center justify-between p-2.5 rounded-xl bg-white/90 border border-[#EDE2E5]/80 shadow-xs">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="w-9 h-9 rounded-full bg-[#C94F6D] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
-                  AK
-                </div>
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold text-[#29252A] truncate">
-                    Anil Kumar
-                  </p>
                   <div className="flex items-center gap-1.5 text-[11px] text-[#3FA56B] font-medium">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#3FA56B] animate-pulse"></span>
-                    <span className="truncate">Counter #1 Active</span>
+                    <span className="truncate">{S.counterActive}</span>
                   </div>
                 </div>
               </div>
               <ChevronRight className="w-4 h-4 text-[#756B70] shrink-0" />
             </div>
           ) : (
-            <div className="group relative flex justify-center py-1">
-              <div className="relative cursor-pointer" onClick={onToggleCollapse}>
-                <div className="w-9 h-9 rounded-full bg-[#C94F6D] text-white flex items-center justify-center font-bold text-xs shadow-xs">
-                  AK
-                </div>
-                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-[#3FA56B] ring-2 ring-white"></span>
-              </div>
-              <div className="absolute left-full ml-3 px-2.5 py-1.5 bg-[#29252A] text-white text-xs font-semibold rounded-lg shadow-lg whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 z-50 pointer-events-none">
-                Anil Kumar • Counter #1 Active
-              </div>
-            </div>
+            <div className="group relative flex justify-center py-1" />
           )}
         </div>
       </aside>

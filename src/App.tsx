@@ -43,6 +43,8 @@ import {
   BulkOrderStatus,
 } from './types';
 
+const TOAST_DURATION_MS = 3000; // every toast disappears after 3 seconds
+
 export default function App() {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
@@ -97,13 +99,15 @@ export default function App() {
   // Notification Toasts
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
+  const removeToast = (id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
+
   const addToast = (title: string, message: string = '', type: ToastMessage['type'] = 'info') => {
     const id = `toast-${Date.now()}-${Math.random()}`;
     setToasts((prev) => [...prev, { id, title, message, type }]);
-  };
-
-  const removeToast = (id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
+    // auto-hide after 3 seconds (the user can still close it earlier)
+    setTimeout(() => removeToast(id), TOAST_DURATION_MS);
   };
 
   // Keyboard shortcut for Command+K / Ctrl+K
@@ -214,8 +218,6 @@ export default function App() {
       addToast('Error', err?.message || 'Failed to adjust stock', 'error');
     }
   };
-
-
 
   const handleUpdateBulkOrderStatus = async (orderId: string, newStatus: number) => {
     try {
@@ -383,7 +385,6 @@ export default function App() {
       <BulkOrderFormModal
         isOpen={isBulkOrderModalOpen}
         onClose={() => setIsBulkOrderModalOpen(false)}
-
       />
 
       {/* Tax & Thermal Invoice Preview Modal */}

@@ -1,8 +1,8 @@
 import axios from 'axios';
 
-const rawBaseUrl = 'https://indigo-kangaroo-864288.hostingersite.com';
+//const rawBaseUrl = 'https://indigo-kangaroo-864288.hostingersite.com';
 
-//const rawBaseUrl = "http://localhost:5000"
+const rawBaseUrl = "http://localhost:5000"
 
 const API_BASE_URL = rawBaseUrl.endsWith('/api')
   ? rawBaseUrl

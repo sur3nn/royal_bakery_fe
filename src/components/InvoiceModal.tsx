@@ -11,6 +11,8 @@ import {
   Share2
 } from 'lucide-react';
 import { Invoice } from '../types';
+import { LOGO_SRC } from './Header';
+import { formatDateTime } from './Bakerylabels';
 
 interface InvoiceModalProps {
   invoice: Invoice | null;
@@ -83,21 +85,26 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
             <div className="max-w-[340px] mx-auto bg-white p-5 border border-[#EDE2E5] shadow-sm rounded-xl font-mono text-xs text-[#29252A]">
               {/* Brand Header */}
               <div className="text-center space-y-1 pb-3 border-b border-dashed border-[#756B70]/40">
-                <div className="w-10 h-10 rounded-full bg-[#FFF0F3] text-[#C94F6D] flex items-center justify-center mx-auto mb-1">
-                  <Cake className="w-5 h-5" />
+                <div className="w-10 h-10 rounded-full  text-[#C94F6D] flex items-center justify-center mx-auto mb-1">
+                   <img
+                                                src={LOGO_SRC}
+                                                alt={""}
+                                                className="h-11 w-auto object-contain select-none shrink-0"
+                                                draggable={false}
+                                              />
                 </div>
                 <h2 className="font-extrabold text-base tracking-tight text-[#29252A] font-sans">
-                  ROYAL SWEETS & BAKERY
+                 கனகராஜ் கேட்டரிங் & ஸ்வீட்ஸ்
                 </h2>
                 <p className="text-[10px] text-[#756B70]">
-                  42, North Mada St, Mylapore, Chennai - 04
+                 29/14, ஆதிசெல்வன் தெரு, அம்மாப்பேட்டை, சேலம்-3
                 </p>
                 <p className="text-[10px] text-[#756B70]">
-                  Tel: +91 44 2498 7654 • GSTIN: 33AAAAA0000A1Z5
+                  PH: 0427-2243676 Cell: 9360013676, 9043013676
                 </p>
-                <p className="text-[10px] text-[#C94F6D] font-bold">
+                {/* <p className="text-[10px] text-[#C94F6D] font-bold">
                   FSSAI Lic No: 12423008000456
-                </p>
+                </p> */}
               </div>
 
               {/* Bill Details */}
@@ -107,8 +114,8 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                   <span>{invoice.dateOnly}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Cashier: {invoice.cashierName}</span>
-                  <span>{invoice.timeOnly}</span>
+                  {/* <span>Cashier: {invoice.cashierName}</span> */}
+                 <span>{formatDateTime(invoice.createdAt)}</span>
                 </div>
                {invoice.customerName && invoice.customerName !== 'Counter Customer' ? (
   <>
@@ -196,22 +203,27 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
               {/* Header */}
               <div className="flex justify-between items-start border-b border-[#EDE2E5] pb-5">
                 <div className="flex items-center gap-3.5">
-                  <div className="w-12 h-12 rounded-2xl bg-[#C94F6D] text-white flex items-center justify-center shadow-sm">
-                    <Cake className="w-7 h-7" />
+                  <div className="w-12 h-12 rounded-2xl  text-white flex items-center justify-center shadow-sm">
+                   <img
+                                                  src={LOGO_SRC}
+                                                  alt={""}
+                                                  className="h-11 w-auto object-contain select-none shrink-0"
+                                                  draggable={false}
+                                                />
                   </div>
                   <div>
                     <h2 className="font-extrabold text-xl text-[#29252A] tracking-tight">
-                      Royal Sweets & Bakery
+                     கனகராஜ் கேட்டரிங் & ஸ்வீட்ஸ்
                     </h2>
                     <p className="text-xs text-[#756B70]">
-                      42, North Mada Street, Mylapore, Chennai - 600004
+                      29/14, ஆதிசெல்வன் தெரு, அம்மாப்பேட்டை, சேலம்-3
                     </p>
                     <p className="text-xs text-[#756B70]">
-                      Phone: +91 44 2498 7654 • GSTIN: 33AAAAA0000A1Z5
+                      PH: 0427-2243676 Cell: 9360013676, 9043013676
                     </p>
-                    <p className="text-[11px] font-semibold text-[#C94F6D]">
+                    {/* <p className="text-[11px] font-semibold text-[#C94F6D]">
                       FSSAI Lic No: 12423008000456
-                    </p>
+                    </p> */}
                   </div>
                 </div>
 
@@ -223,8 +235,8 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                     {invoice.invoiceNumber}
                   </p>
                   <p className="text-xs text-[#756B70]">
-                    Date: {invoice.dateOnly} {invoice.timeOnly}
-                  </p>
+  Date : {formatDateTime(invoice.createdAt ?? `${invoice.dateOnly} ${invoice.timeOnly}`)}
+</p>
                 </div>
               </div>
 
@@ -242,8 +254,8 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                     Billing Details:
                   </p>
                   <p className="text-[#29252A] mt-0.5">Counter: Counter #1 (POS)</p>
-                  <p className="text-[#29252A]">Cashier: {invoice.cashierName}</p>
-                  <p className="font-semibold text-[#3FA56B]">Status: {invoice.status}</p>
+                  {/* <p className="text-[#29252A]">Cashier: {invoice.cashierName}</p> */}
+                  {/* <p className="font-semibold text-[#3FA56B]">Status: {invoice.status}</p> */}
                 </div>
               </div>
 

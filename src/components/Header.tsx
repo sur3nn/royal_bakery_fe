@@ -1,42 +1,60 @@
-import React from 'react';
-import { 
-  Search, 
-  Calendar, 
-  Receipt, 
-  Menu, 
+import React, { useEffect, useState } from 'react';
+import {
+  Calendar,
+  Receipt,
+  Menu,
   ChevronDown,
+  User,
   PanelLeftClose,
   PanelLeftOpen
 } from 'lucide-react';
+import {sidebar as ta}  from '../components/Bakerylabels'
 
 interface HeaderProps {
-  onOpenSearch: () => void;
+  onOpenSearch?: () => void; // search bar removed – kept optional so existing callers don't break
   onNewBill: () => void;
   onOpenMobileMenu: () => void;
   isSidebarCollapsed: boolean;
   onToggleSidebar: () => void;
 }
 
+const H = ta.header;
+
+// Logo is a static file: put kcs_logo.png in your public/ (static) folder
+export const LOGO_SRC = 'assets/image/kcs_logo.png';
+
+// Today's date in Tamil, e.g. "ஞாயிறு, 11 அக்., 2026"
+const formatTamilDate = (d: Date) =>
+  d.toLocaleDateString('ta-IN', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+
 export const Header: React.FC<HeaderProps> = ({
-  onOpenSearch,
   onNewBill,
   onOpenMobileMenu,
   isSidebarCollapsed,
   onToggleSidebar,
 }) => {
-  // Format current date matching reference image "Tue, Sep 22, 2026"
-  const formattedDate = "Tue, Sep 22, 2026";
+  // Live current date (re-checked every minute, so it rolls over at midnight)
+  const [formattedDate, setFormattedDate] = useState(() => formatTamilDate(new Date()));
+  useEffect(() => {
+    const timer = setInterval(() => setFormattedDate(formatTamilDate(new Date())), 60_000);
+    return () => clearInterval(timer);
+  }, []);
 
   return (
     <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#EDE2E5] px-4 lg:px-8 py-3 transition-all">
       <div className="flex items-center justify-between gap-4">
-        {/* Mobile menu trigger & search input */}
+        {/* Mobile menu trigger, sidebar toggle & logo */}
         <div className="flex items-center gap-3 flex-1 max-w-xl">
           {/* Mobile hamburger menu button */}
           <button
             onClick={onOpenMobileMenu}
             className="lg:hidden p-2 rounded-xl border border-[#EDE2E5] text-[#29252A] hover:bg-[#FFF4F6] transition-colors cursor-pointer"
-            aria-label="Toggle navigation drawer"
+            aria-label={H.openMenu}
           >
             <Menu className="w-5 h-5 text-[#29252A]" />
           </button>
@@ -45,8 +63,8 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             onClick={onToggleSidebar}
             className="hidden lg:flex items-center justify-center p-2 rounded-xl border border-[#EDE2E5] text-[#756B70] hover:text-[#C94F6D] hover:bg-[#FFF4F6] hover:border-[#C94F6D]/30 transition-all cursor-pointer shadow-2xs group shrink-0"
-            title={isSidebarCollapsed ? "Expand sidebar (Open)" : "Collapse sidebar (Close)"}
-            aria-label={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={isSidebarCollapsed ? H.expandSidebar : H.collapseSidebar}
+            aria-label={isSidebarCollapsed ? H.expandSidebar : H.collapseSidebar}
           >
             {isSidebarCollapsed ? (
               <PanelLeftOpen className="w-5 h-5 text-[#756B70] group-hover:text-[#C94F6D] transition-colors" />
@@ -55,18 +73,17 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </button>
 
-          {/* Global Search Bar (opens search modal) */}
-          <div
-            onClick={onOpenSearch}
-            className="w-full flex items-center justify-between px-3.5 py-2.5 bg-[#FFF9F5]/70 hover:bg-[#FFF4F6]/50 border border-[#EDE2E5] hover:border-[#C94F6D]/40 rounded-xl text-sm text-[#756B70] cursor-pointer transition-all shadow-2xs group"
-          >
-            <div className="flex items-center gap-2.5 truncate">
-              <Search className="w-4 h-4 text-[#756B70] group-hover:text-[#C94F6D] transition-colors shrink-0" />
-              <span className="truncate text-xs sm:text-sm">Search products, invoices, bulk orders...</span>
-            </div>
-            <kbd className="hidden sm:inline-flex items-center gap-0.5 px-2 py-0.5 text-[11px] font-semibold text-[#756B70] bg-white border border-[#EDE2E5] rounded-md shadow-2xs">
-              <span className="text-xs">⌘</span>K
-            </kbd>
+          {/* Shop logo (replaces the search bar) + bold shop name on its right */}
+          <div className="flex items-center gap-3 min-w-0">
+            <img
+              src={LOGO_SRC}
+              alt={H.logoAlt}
+              className="h-11 w-auto object-contain select-none shrink-0"
+              draggable={false}
+            />
+            <h1 className="font-extrabold text-base sm:text-lg text-[#29252A] leading-tight truncate">
+              {ta.shop.name}
+            </h1>
           </div>
         </div>
 
@@ -78,24 +95,23 @@ export const Header: React.FC<HeaderProps> = ({
             <span>{formattedDate}</span>
           </div>
 
-          {/* Primary POS Action (Gold button from reference) */}
+          {/* Primary POS Action */}
           <button
             onClick={onNewBill}
             className="flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-[#D9A441] hover:bg-[#C89433] active:scale-[0.98] text-white font-semibold text-xs sm:text-sm shadow-sm shadow-[#D9A441]/25 transition-all cursor-pointer"
           >
             <Receipt className="w-4 h-4" />
-            <span className="hidden xs:inline">New Bill (POS)</span>
-            <span className="xs:hidden">POS</span>
+            <span className="hidden xs:inline">{H.newBill}</span>
+            <span className="xs:hidden">{H.newBillShort}</span>
           </button>
 
           {/* Cashier Profile Pill */}
           <div className="flex items-center gap-2.5 pl-1 sm:pl-2">
-            <div className="w-9 h-9 rounded-full bg-[#C94F6D] text-white flex items-center justify-center font-bold text-xs shadow-2xs">
-              AK
+            <div className="w-9 h-9 rounded-full bg-[#C94F6D] text-white flex items-center justify-center shadow-2xs">
+              <User className="w-4 h-4" />
             </div>
             <div className="hidden xl:block text-left">
-              <p className="text-xs font-bold text-[#29252A] leading-tight">Anil Kumar</p>
-              <p className="text-[11px] text-[#756B70] leading-tight">Head Cashier</p>
+              <p className="text-[11px] text-[#756B70] leading-tight">{H.headCashier}</p>
             </div>
             <ChevronDown className="hidden sm:block w-3.5 h-3.5 text-[#756B70]" />
           </div>
