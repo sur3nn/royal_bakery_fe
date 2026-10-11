@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { ChefHat, X, ChevronLeft, ChevronRight, Loader2, FileDown } from 'lucide-react';
 
 // Same API base you use for the other KOT downloads
-//const API = "http://localhost:5000" 
+ //const API = "http://localhost:5000" 
 const API = 'https://indigo-kangaroo-864288.hostingersite.com';
 
 // ---------- Tamil labels ----------
