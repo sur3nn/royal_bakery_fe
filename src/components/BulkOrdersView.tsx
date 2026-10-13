@@ -35,6 +35,28 @@ const simplify = (o: any) => ({
   })),
 });
 
+type SimpleOrder = ReturnType<typeof simplify>;
+
+/* ---------- Tamil quantity formatting ---------- */
+
+const isKg = (unit?: string) =>
+  ['kg', 'kgs', 'kilogram', 'kilograms'].includes(String(unit || '').trim().toLowerCase());
+
+const unitTa = (unit?: string) => {
+  const u = String(unit || '').trim().toLowerCase();
+  if (isKg(unit)) return 'கிலோ';
+  if (['gm', 'g', 'gram', 'grams'].includes(u)) return 'கிராம்';
+  if (['l', 'ltr', 'litre', 'liter', 'litres', 'liters'].includes(u)) return 'லிட்டர்';
+  if (['pcs', 'pc', 'piece', 'pieces', 'nos'].includes(u)) return 'எண்';
+  return unit || '';
+};
+
+// 0.25 -> "250 கிராம்", 1.5 -> "1.5 கிலோ"; other units translated
+const fmtTa = (qty: number, unit?: string) => {
+  if (!isKg(unit)) return `${+qty.toFixed(3)} ${unitTa(unit)}`.trim();
+  return qty < 1 ? `${Math.round(qty * 1000)} கிராம்` : `${+qty.toFixed(3)} கிலோ`;
+};
+
 // Bulk order -> same shape the InvoiceModal already understands
 const toInvoice = (o: any): Invoice => {
   const total = Number(o.totalAmount ?? o.total_amount ?? 0);
@@ -70,9 +92,41 @@ const toInvoice = (o: any): Invoice => {
     })),
     // extra fields used by the modal for bulk orders
     isBulk: true,
+    occasion: o.occasion ?? '',
+    specialInstructions: o.specialInstructions ?? o.special_instructions ?? '',
     advancePaid: advance,
     balanceDue: balance,
     deliveryText: `${formatDate(delivery)} ${formatTime(deliveryTime)}`,
+  } as any;
+};
+
+// Kitchen / Packing slip -> same Invoice shape, so the same modal opens (thermal only, in Tamil)
+const toKotInvoice = (o: SimpleOrder, kind: 'kitchen' | 'packing'): Invoice => {
+  const base: any = toInvoice(o.raw);
+
+  // group lines by product (one product can have several box sizes)
+  const groups: { name: string; unit: string; total: number; packs: string[] }[] = [];
+  o.items.forEach((it: any) => {
+    let g = groups.find((x) => x.name === it.name && x.unit === it.unit);
+    if (!g) {
+      g = { name: it.name, unit: it.unit, total: 0, packs: [] };
+      groups.push(g);
+    }
+    g.total += it.total;
+    g.packs.push(`${fmtTa(it.size, it.unit)} x ${it.boxes} பெட்டி`);
+  });
+
+  return {
+    ...base,
+    isKot: true,
+    kotType: kind, // 'kitchen' | 'packing'
+    kotTitle: kind === 'kitchen' ? 'சமையலறை சீட்டு' : 'பேக்கிங் சீட்டு',
+    kotLines: groups.map((g) => ({
+      name: g.name,
+      // kitchen: total to make | packing: each box size x boxes
+      total: fmtTa(g.total, g.unit),
+      packs: g.packs,
+    })),
   } as any;
 };
 
@@ -245,23 +299,43 @@ export const BulkOrdersView: React.FC<BulkOrdersViewProps> = ({
 
                   <td className="py-3.5 px-4">
                     <div className="flex flex-col gap-1.5">
-                      <button
-                        onClick={() =>
-                          downloadPdf(`/api/bulk-orders/${o.id}/kot/kitchen`, `kitchen-kot-${o.number}.pdf`)
-                        }
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#FFF3D6] text-[#8A6414] text-xs font-bold cursor-pointer"
-                      >
-                        <FileDown className="w-3.5 h-3.5" /> Kitchen
-                      </button>
+                      {/* Kitchen: eye = view slip, button = download PDF */}
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => setViewInvoice(toKotInvoice(o, 'kitchen'))}
+                          className="p-1.5 rounded-lg text-[#756B70] hover:text-[#8A6414] hover:bg-[#FFF3D6] cursor-pointer"
+                          title="View kitchen slip"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() =>
+                            downloadPdf(`/api/bulk-orders/${o.id}/kot/kitchen`, `kitchen-kot-${o.number}.pdf`)
+                          }
+                          className="flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#FFF3D6] text-[#8A6414] text-xs font-bold cursor-pointer"
+                        >
+                          <FileDown className="w-3.5 h-3.5" /> Kitchen
+                        </button>
+                      </div>
 
-                      <button
-                        onClick={() =>
-                          downloadPdf(`/api/bulk-orders/${o.id}/kot/packing`, `packing-kot-${o.number}.pdf`)
-                        }
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#EBF3FB] text-[#2F5F96] text-xs font-bold cursor-pointer"
-                      >
-                        <FileDown className="w-3.5 h-3.5" /> Packing
-                      </button>
+                      {/* Packing: eye = view slip, button = download PDF */}
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => setViewInvoice(toKotInvoice(o, 'packing'))}
+                          className="p-1.5 rounded-lg text-[#756B70] hover:text-[#2F5F96] hover:bg-[#EBF3FB] cursor-pointer"
+                          title="View packing slip"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() =>
+                            downloadPdf(`/api/bulk-orders/${o.id}/kot/packing`, `packing-kot-${o.number}.pdf`)
+                          }
+                          className="flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#EBF3FB] text-[#2F5F96] text-xs font-bold cursor-pointer"
+                        >
+                          <FileDown className="w-3.5 h-3.5" /> Packing
+                        </button>
+                      </div>
 
                       {/* Bill: eye = open bill view, button = download PDF */}
                       <div className="flex items-center gap-1.5">
@@ -290,7 +364,7 @@ export const BulkOrdersView: React.FC<BulkOrdersViewProps> = ({
         </div>
       )}
 
-      {/* Same bill view used in Invoices */}
+      {/* Bill view and kitchen / packing slips (thermal) */}
       <InvoiceModal invoice={viewInvoice} onClose={() => setViewInvoice(null)} />
     </div>
   );
