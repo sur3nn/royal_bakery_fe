@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Printer, Receipt } from 'lucide-react';
 import { Invoice } from '../types';
 import { LOGO_SRC } from './Header';
@@ -8,6 +9,11 @@ interface InvoiceModalProps {
   invoice: Invoice | null;
   onClose: () => void;
 }
+
+// TVS RP 4200 — 80mm roll, 72mm printable.
+// For a 58mm roll: change these to 58 and 48.
+const THERMAL_PAPER_MM = 80;
+const THERMAL_PRINT_MM = 72;
 
 export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) => {
   const [printMode, setPrintMode] = useState<'a4' | 'thermal'>('thermal');
@@ -26,23 +32,24 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
   // Slips are always thermal
   const isThermal = isKot || printMode === 'thermal';
 
-  // For a 58mm roll: change 80mm -> 58mm and 72mm -> 48mm below.
   const printStyles = `
 @media print {
   @page {
-    size: ${isThermal ? '80mm auto' : 'A4'};
+    size: ${isThermal ? `${THERMAL_PAPER_MM}mm auto` : 'A4'};
     margin: ${isThermal ? '0' : '10mm'};
   }
   html, body {
     margin: 0 !important;
     padding: 0 !important;
     background: #fff !important;
-    ${isThermal ? 'width: 80mm !important;' : ''}
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    ${isThermal ? `width: ${THERMAL_PAPER_MM}mm !important;` : ''}
   }
 
-  /* show only the bill */
-  body * { visibility: hidden !important; }
-  .print-area, .print-area * { visibility: visible !important; }
+  /* take the rest of the app out of the layout (no blank paper is fed) */
+  body > *:not(.print-portal) { display: none !important; }
   .no-print { display: none !important; }
 
   /* remove modal limits so the full bill prints */
@@ -69,21 +76,22 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
     background: #fff !important;
   }
 
+  /* in normal flow, so the receipt can be centered with auto margins */
   .print-area {
-    position: absolute;
-    left: 0;
-    top: 0;
+    position: static !important;
     width: 100%;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
 
-  /* THERMAL receipt: 80mm roll, ~72mm printable */
+  /* THERMAL receipt: 80mm paper, 72mm printable, height = content */
   .thermal-receipt {
-    width: 72mm !important;
-    max-width: 72mm !important;
+    box-sizing: border-box !important;
+    width: ${THERMAL_PRINT_MM}mm !important;
+    max-width: ${THERMAL_PRINT_MM}mm !important;
+    height: auto !important;
     margin: 0 auto !important;
-    padding: 2mm 1mm !important;
+    padding: 2mm 1mm 10mm !important; /* 10mm bottom = space before the auto-cutter */
     border: 0 !important;
     box-shadow: none !important;
     border-radius: 0 !important;
@@ -91,6 +99,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
     font-family: 'Courier New', monospace;
     font-weight: 700;
     line-height: 1.35;
+    overflow: hidden;
   }
   .thermal-receipt, .thermal-receipt * {
     color: #000 !important;
@@ -99,11 +108,11 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
   }
   .thermal-receipt h2 { font-size: 17px !important; font-weight: 800 !important; }
   .thermal-receipt .grand { font-size: 17px !important; font-weight: 800 !important; }
-  .thermal-receipt img { height: 50px !important; filter: grayscale(1) contrast(2); }
+  .thermal-receipt img { height: 50px !important; filter: grayscale(1) contrast(1.4) brightness(0.8); }
 }`;
 
-  return (
-    <div className="print-overlay fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-xs overflow-y-auto">
+  return createPortal(
+    <div className="print-portal print-overlay fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-xs overflow-y-auto">
       <style>{printStyles}</style>
 
       <div className="print-modal bg-white rounded-2xl w-full max-w-2xl shadow-2xl border border-[#EDE2E5] overflow-hidden my-auto animate-in fade-in zoom-in-95">
@@ -127,7 +136,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                     isThermal ? 'bg-[#C94F6D] text-white' : 'text-[#756B70]'
                   }`}
                 >
-                  Thermal (80mm)
+                  Thermal ({THERMAL_PAPER_MM}mm)
                 </button>
                 <button
                   onClick={() => setPrintMode('a4')}
@@ -162,23 +171,22 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
           {isThermal ? (
             isKot ? (
               /* ================= KITCHEN / PACKING SLIP (80mm) ================= */
-              <div className="print-area thermal-receipt max-w-[340px] mx-auto bg-white p-5 border border-[#EDE2E5] shadow-sm rounded-xl font-mono text-[13px] text-black">
+              <div className="print-area thermal-receipt w-[72mm] mx-auto bg-white px-[1mm] py-[2mm] border border-[#EDE2E5] shadow-sm rounded-xl font-mono text-[13px] text-black">
                 {/* Header */}
-            {/* Header */}
-<div className="text-center space-y-1 pb-3 border-b border-dashed border-black">
-  <div className="flex items-center justify-center mx-auto mb-1">
-    <img
-      src={LOGO_SRC}
-      alt=""
-      className="h-11 w-auto object-contain select-none shrink-0"
-      draggable={false}
-    />
-  </div>
-  <h2 className="font-extrabold text-base tracking-tight text-black font-sans">
-    கனகராஜ் கேட்டரிங் & ஸ்வீட்ஸ்
-  </h2>
-  <p className="font-extrabold text-base tracking-wide">{k.kotTitle}</p>
-</div>
+                <div className="text-center space-y-1 pb-3 border-b border-dashed border-black">
+                  <div className="flex items-center justify-center mx-auto mb-1">
+                    <img
+                      src={LOGO_SRC}
+                      alt=""
+                      className="h-11 w-auto object-contain select-none shrink-0"
+                      draggable={false}
+                    />
+                  </div>
+                  <h2 className="font-extrabold text-base tracking-tight text-black font-sans">
+                    கனகராஜ் கேட்டரிங் & ஸ்வீட்ஸ்
+                  </h2>
+                  <p className="font-extrabold text-base tracking-wide">{k.kotTitle}</p>
+                </div>
 
                 {/* Order info */}
                 <div className="py-2.5 space-y-1 border-b border-dashed border-black text-[13px]">
@@ -244,7 +252,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
               </div>
             ) : (
               /* ================= THERMAL 80mm RECEIPT LAYOUT ================= */
-              <div className="print-area thermal-receipt max-w-[340px] mx-auto bg-white p-5 border border-[#EDE2E5] shadow-sm rounded-xl font-mono text-[13px] text-black">
+              <div className="print-area thermal-receipt w-[72mm] mx-auto bg-white px-[1mm] py-[2mm] border border-[#EDE2E5] shadow-sm rounded-xl font-mono text-[13px] text-black">
                 {/* Brand Header */}
                 <div className="text-center space-y-1 pb-3 border-b border-dashed border-black">
                   <div className="flex items-center justify-center mx-auto mb-1">
@@ -271,13 +279,10 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
 
                 {/* Bill Details */}
                 <div className="py-2.5 space-y-1 border-b border-dashed border-black text-[13px]">
-                  <div className="flex justify-between">
-                    <span>Bill No: {invoice.invoiceNumber}</span>
-                    <span>{invoice.dateOnly}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    {/* <span>Cashier: {invoice.cashierName}</span> */}
-                    <span>{formatDateTime(invoice.createdAt)}</span>
+                  <div className="break-words">Bill No: {invoice.invoiceNumber}</div>
+                  {/* <div>Cashier: {invoice.cashierName}</div> */}
+                  <div>
+                    {formatDateTime(invoice.createdAt ?? `${invoice.dateOnly} ${invoice.timeOnly}`)}
                   </div>
                   {invoice.customerName && invoice.customerName !== 'Counter Customer' ? (
                     <>
@@ -505,6 +510,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
