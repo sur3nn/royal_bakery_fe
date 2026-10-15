@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { createPortal } from 'react-dom';
 import { X, Printer, Receipt } from 'lucide-react';
 import { Invoice } from '../types';
 import { LOGO_SRC } from './Header';
@@ -9,11 +8,6 @@ interface InvoiceModalProps {
   invoice: Invoice | null;
   onClose: () => void;
 }
-
-// TVS RP 4200 — 80mm roll, 72mm printable.
-// For a 58mm roll: change these to 58 and 48.
-const THERMAL_PAPER_MM = 80;
-const THERMAL_PRINT_MM = 72;
 
 export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) => {
   const [printMode, setPrintMode] = useState<'a4' | 'thermal'>('thermal');
@@ -32,24 +26,28 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
   // Slips are always thermal
   const isThermal = isKot || printMode === 'thermal';
 
+  // Single-line date + time
+  const dateTimeText = invoice.createdAt
+    ? formatDateTime(invoice.createdAt)
+    : `${invoice.dateOnly ?? ''} ${invoice.timeOnly ?? ''}`.trim();
+
+  // For a 58mm roll: change 80mm -> 58mm and 68mm -> 48mm below.
   const printStyles = `
 @media print {
   @page {
-    size: ${isThermal ? `${THERMAL_PAPER_MM}mm auto` : 'A4'};
+    size: ${isThermal ? '80mm auto' : 'A4'};
     margin: ${isThermal ? '0' : '10mm'};
   }
   html, body {
     margin: 0 !important;
     padding: 0 !important;
     background: #fff !important;
-    height: auto !important;
-    min-height: 0 !important;
-    overflow: visible !important;
-    ${isThermal ? `width: ${THERMAL_PAPER_MM}mm !important;` : ''}
+    ${isThermal ? 'width: 80mm !important;' : ''}
   }
 
-  /* take the rest of the app out of the layout (no blank paper is fed) */
-  body > *:not(.print-portal) { display: none !important; }
+  /* show only the bill */
+  body * { visibility: hidden !important; }
+  .print-area, .print-area * { visibility: visible !important; }
   .no-print { display: none !important; }
 
   /* remove modal limits so the full bill prints */
@@ -76,22 +74,25 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
     background: #fff !important;
   }
 
-  /* in normal flow, so the receipt can be centered with auto margins */
   .print-area {
-    position: static !important;
-    width: 100%;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
 
-  /* THERMAL receipt: 80mm paper, 72mm printable, height = content */
+  /* THERMAL receipt: 80mm roll, centred, equal padding on all 4 sides */
   .thermal-receipt {
-    box-sizing: border-box !important;
-    width: ${THERMAL_PRINT_MM}mm !important;
-    max-width: ${THERMAL_PRINT_MM}mm !important;
-    height: auto !important;
+    position: absolute !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 68mm !important;
+    max-width: 68mm !important;
     margin: 0 auto !important;
-    padding: 2mm 1mm 10mm !important; /* 10mm bottom = space before the auto-cutter */
+    padding: 3mm !important;
+    box-sizing: border-box !important;
     border: 0 !important;
     box-shadow: none !important;
     border-radius: 0 !important;
@@ -99,20 +100,30 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
     font-family: 'Courier New', monospace;
     font-weight: 700;
     line-height: 1.35;
-    overflow: hidden;
   }
   .thermal-receipt, .thermal-receipt * {
     color: #000 !important;
     font-size: 13px !important;
     border-color: #000 !important;
+    box-sizing: border-box;
   }
   .thermal-receipt h2 { font-size: 17px !important; font-weight: 800 !important; }
   .thermal-receipt .grand { font-size: 17px !important; font-weight: 800 !important; }
-  .thermal-receipt img { height: 50px !important; filter: grayscale(1) contrast(1.4) brightness(0.8); }
+  .thermal-receipt .nowrap { white-space: nowrap !important; }
+
+  /* Dark, solid logo (forces light/colored pixels to black) */
+  .thermal-receipt img.print-logo {
+    height: 60px !important;
+    width: auto !important;
+    background: #fff !important;
+    filter: grayscale(1) brightness(0.6) contrast(10) !important;
+    -webkit-filter: grayscale(1) brightness(0.6) contrast(10) !important;
+    image-rendering: crisp-edges;
+  }
 }`;
 
-  return createPortal(
-    <div className="print-portal print-overlay fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-xs overflow-y-auto">
+  return (
+    <div className="print-overlay fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-xs overflow-y-auto">
       <style>{printStyles}</style>
 
       <div className="print-modal bg-white rounded-2xl w-full max-w-2xl shadow-2xl border border-[#EDE2E5] overflow-hidden my-auto animate-in fade-in zoom-in-95">
@@ -136,7 +147,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                     isThermal ? 'bg-[#C94F6D] text-white' : 'text-[#756B70]'
                   }`}
                 >
-                  Thermal ({THERMAL_PAPER_MM}mm)
+                  Thermal (80mm)
                 </button>
                 <button
                   onClick={() => setPrintMode('a4')}
@@ -171,28 +182,28 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
           {isThermal ? (
             isKot ? (
               /* ================= KITCHEN / PACKING SLIP (80mm) ================= */
-              <div className="print-area thermal-receipt w-[72mm] mx-auto bg-white px-[1mm] py-[2mm] border border-[#EDE2E5] shadow-sm rounded-xl font-mono text-[13px] text-black">
+              <div className="print-area thermal-receipt max-w-[340px] mx-auto bg-white p-5 border border-[#EDE2E5] shadow-sm rounded-xl font-mono text-[13px] text-black">
                 {/* Header */}
                 <div className="text-center space-y-1 pb-3 border-b border-dashed border-black">
                   <div className="flex items-center justify-center mx-auto mb-1">
                     <img
                       src={LOGO_SRC}
                       alt=""
-                      className="h-11 w-auto object-contain select-none shrink-0"
+                      className="print-logo h-14 w-auto object-contain select-none shrink-0"
                       draggable={false}
                     />
                   </div>
-                  <h2 className="font-extrabold text-base tracking-tight text-black font-sans">
+                  <h2 className="font-extrabold text-base tracking-tight text-black font-sans text-center">
                     கனகராஜ் கேட்டரிங் & ஸ்வீட்ஸ்
                   </h2>
-                  <p className="font-extrabold text-base tracking-wide">{k.kotTitle}</p>
+                  <p className="font-extrabold text-base tracking-wide text-center">{k.kotTitle}</p>
                 </div>
 
                 {/* Order info */}
                 <div className="py-2.5 space-y-1 border-b border-dashed border-black text-[13px]">
                   <div className="flex justify-between gap-2">
                     <span>Order No</span>
-                    <b>{invoice.invoiceNumber}</b>
+                    <b className="text-right">{invoice.invoiceNumber}</b>
                   </div>
                   <div className="flex justify-between gap-2">
                     <span>Customer</span>
@@ -252,24 +263,24 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
               </div>
             ) : (
               /* ================= THERMAL 80mm RECEIPT LAYOUT ================= */
-              <div className="print-area thermal-receipt w-[72mm] mx-auto bg-white px-[1mm] py-[2mm] border border-[#EDE2E5] shadow-sm rounded-xl font-mono text-[13px] text-black">
+              <div className="print-area thermal-receipt max-w-[340px] mx-auto bg-white p-5 border border-[#EDE2E5] shadow-sm rounded-xl font-mono text-[13px] text-black">
                 {/* Brand Header */}
                 <div className="text-center space-y-1 pb-3 border-b border-dashed border-black">
                   <div className="flex items-center justify-center mx-auto mb-1">
                     <img
                       src={LOGO_SRC}
                       alt=""
-                      className="h-11 w-auto object-contain select-none shrink-0"
+                      className="print-logo h-14 w-auto object-contain select-none shrink-0"
                       draggable={false}
                     />
                   </div>
-                  <h2 className="font-extrabold text-base tracking-tight text-black font-sans">
+                  <h2 className="font-extrabold text-base tracking-tight text-black font-sans text-center">
                     கனகராஜ் கேட்டரிங் & ஸ்வீட்ஸ்
                   </h2>
-                  <p className="text-[12px] text-black">
+                  <p className="text-[12px] text-black text-center">
                     29/14, ஆதிசெல்வன் தெரு, அம்மாப்பேட்டை, சேலம்-3
                   </p>
-                  <p className="text-[12px] text-black">
+                  <p className="text-[12px] text-black text-center">
                     PH: 0427-2243676 Cell: 9360013676, 9043013676
                   </p>
                   {/* <p className="text-[12px] text-black font-bold">
@@ -279,11 +290,8 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
 
                 {/* Bill Details */}
                 <div className="py-2.5 space-y-1 border-b border-dashed border-black text-[13px]">
-                  <div className="break-words">Bill No: {invoice.invoiceNumber}</div>
-                  {/* <div>Cashier: {invoice.cashierName}</div> */}
-                  <div>
-                    {formatDateTime(invoice.createdAt ?? `${invoice.dateOnly} ${invoice.timeOnly}`)}
-                  </div>
+                  <p className="nowrap whitespace-nowrap">Bill No: {invoice.invoiceNumber}</p>
+                  <p className="nowrap whitespace-nowrap">Date: {dateTimeText}</p>
                   {invoice.customerName && invoice.customerName !== 'Counter Customer' ? (
                     <>
                       <p className="font-bold text-black text-sm mt-0.5">{invoice.customerName}</p>
@@ -401,7 +409,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                   <p className="font-mono font-bold text-sm text-[#29252A] mt-2">
                     {invoice.invoiceNumber}
                   </p>
-                  <p className="text-xs text-[#756B70]">
+                  <p className="text-xs text-[#756B70] whitespace-nowrap">
                     Date : {formatDateTime(invoice.createdAt ?? `${invoice.dateOnly} ${invoice.timeOnly}`)}
                   </p>
                 </div>
@@ -510,7 +518,6 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
           )}
         </div>
       </div>
-    </div>,
-    document.body
+    </div>
   );
 };
