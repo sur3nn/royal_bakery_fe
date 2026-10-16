@@ -121,7 +121,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
     image-rendering: crisp-edges;
   }
 }`;
-
+  const hasGst = (invoice.cgst ?? 0) > 0 || (invoice.sgst ?? 0) > 0;
   return (
     <div className="print-overlay fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-xs overflow-y-auto">
       <style>{printStyles}</style>
@@ -143,17 +143,15 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
               <div className="flex items-center bg-white border border-[#EDE2E5] rounded-xl p-1 text-xs">
                 <button
                   onClick={() => setPrintMode('thermal')}
-                  className={`px-2.5 py-1 rounded-lg font-semibold transition-colors cursor-pointer ${
-                    isThermal ? 'bg-[#C94F6D] text-white' : 'text-[#756B70]'
-                  }`}
+                  className={`px-2.5 py-1 rounded-lg font-semibold transition-colors cursor-pointer ${isThermal ? 'bg-[#C94F6D] text-white' : 'text-[#756B70]'
+                    }`}
                 >
                   Thermal (80mm)
                 </button>
                 <button
                   onClick={() => setPrintMode('a4')}
-                  className={`px-2.5 py-1 rounded-lg font-semibold transition-colors cursor-pointer ${
-                    !isThermal ? 'bg-[#C94F6D] text-white' : 'text-[#756B70]'
-                  }`}
+                  className={`px-2.5 py-1 rounded-lg font-semibold transition-colors cursor-pointer ${!isThermal ? 'bg-[#C94F6D] text-white' : 'text-[#756B70]'
+                    }`}
                 >
                   A4 Tax Invoice
                 </button>
@@ -313,7 +311,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                       <p className="font-bold text-black leading-tight break-words">{it.productName}</p>
                       <div className="flex justify-between text-black">
                         <span className="whitespace-nowrap">
-                          {it.quantity} {it.unit} x {it.price}
+                          {it.quantity} {it.unit}
                         </span>
                         <span className="font-bold whitespace-nowrap">
                           ₹{it.total.toLocaleString()}
@@ -335,14 +333,18 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                       <span>-₹{invoice.discountTotal.toLocaleString()}</span>
                     </div>
                   )}
-                  <div className="flex justify-between text-black">
-                    <span>CGST (2.5%):</span>
-                    <span>₹{invoice.cgst.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between text-black">
-                    <span>SGST (2.5%):</span>
-                    <span>₹{invoice.sgst.toLocaleString()}</span>
-                  </div>
+                  {hasGst && (
+                    <>
+                      <div className="flex justify-between text-black">
+                        <span>CGST (2.5%):</span>
+                        <span>₹{invoice.cgst.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between text-black">
+                        <span>SGST (2.5%):</span>
+                        <span>₹{invoice.sgst.toLocaleString()}</span>
+                      </div>
+                    </>
+                  )}
 
                   <div className="flex justify-between items-center pt-2 font-extrabold text-black font-sans">
                     <span className="grand">NET PAYABLE:</span>
@@ -479,14 +481,18 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                       <span className="font-semibold">-₹{invoice.discountTotal.toLocaleString()}</span>
                     </div>
                   )}
-                  <div className="flex justify-between text-[#756B70]">
-                    <span>CGST (2.5%):</span>
-                    <span className="font-semibold text-[#29252A]">₹{invoice.cgst.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between text-[#756B70]">
-                    <span>SGST (2.5%):</span>
-                    <span className="font-semibold text-[#29252A]">₹{invoice.sgst.toLocaleString()}</span>
-                  </div>
+                  {hasGst && (
+                    <>
+                      <div className="flex justify-between text-[#756B70]">
+                        <span>CGST (2.5%):</span>
+                        <span className="font-semibold text-[#29252A]">₹{invoice.cgst.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between text-[#756B70]">
+                        <span>SGST (2.5%):</span>
+                        <span className="font-semibold text-[#29252A]">₹{invoice.sgst.toLocaleString()}</span>
+                      </div>
+                    </>
+                  )}
                   <div className="flex justify-between items-center pt-2 border-t border-[#EDE2E5] text-base font-extrabold text-[#29252A]">
                     <span>Grand Total:</span>
                     <span className="text-[#C94F6D] text-lg font-extrabold">
