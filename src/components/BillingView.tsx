@@ -1,14 +1,14 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { 
-  Search, 
-  Plus, 
-  Minus, 
-  Trash2, 
-  ShoppingBag, 
-  CreditCard, 
-  Banknote, 
-  QrCode, 
-  Receipt, 
+import {
+  Search,
+  Plus,
+  Minus,
+  Trash2,
+  ShoppingBag,
+  CreditCard,
+  Banknote,
+  QrCode,
+  Receipt,
   RotateCcw,
   Percent,
   CheckCircle2,
@@ -19,11 +19,11 @@ import {
 } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../redux/store';
-import { 
-  CreateSaleAction, 
-  FetchProductsAction, 
-  FetchSalesAction, 
-  FetchDashboardAction, 
+import {
+  CreateSaleAction,
+  FetchProductsAction,
+  FetchSalesAction,
+  FetchDashboardAction,
   FetchCategoriesAction
 } from '../redux/actions/bakeryActions';
 import { Product, CartItem, Invoice } from '../types';
@@ -54,6 +54,10 @@ const formatQty = (qty: number, unit?: string) => {
   if (!isKgUnit(unit)) return String(qty);
   return qty < 1 ? `${Math.round(qty * 1000)} gm` : `${round3(qty)} kg`;
 };
+
+// GST rate of a product. A real 0 stays 0 (no fallback to 5).
+const getGstRate = (p: any) =>
+  Number(p?.gstRate ?? p?.gst_rate ?? p?.gst_percent ?? 0) || 0;
 
 export const BillingView: React.FC<BillingViewProps> = ({
   products: initialProducts = [],
@@ -119,7 +123,7 @@ export const BillingView: React.FC<BillingViewProps> = ({
       }
 
       const price = Number(product.sellingPrice || (product as any).selling_price || 0);
-      const gstRate = Number(product.gstRate || (product as any).gst_rate || 5);
+      const gstRate = getGstRate(product);
       const discountPercent = 0;
       const discountAmount = 0;
       const itemSubtotal = Math.round(price * qty * 100) / 100;
@@ -168,7 +172,7 @@ export const BillingView: React.FC<BillingViewProps> = ({
         if (item.product.id !== productId) return item;
 
         const price = Number(item.product.sellingPrice || (item.product as any).selling_price || 0);
-        const gstRate = Number(item.product.gstRate || (item.product as any).gst_rate || 5);
+        const gstRate = getGstRate(item.product);
         const stockAvailable = Number(item.product.stock || 0);
 
         if (newQty > stockAvailable) {
@@ -213,18 +217,13 @@ export const BillingView: React.FC<BillingViewProps> = ({
   const totalDiscount = itemWiseDiscount;
   const taxableAmount = Math.max(0, rawCartSubtotal - totalDiscount);
 
-  // Compute GST based on weighted rates of items
-  const gstTotal = cart.reduce((acc, item) => {
-    const ratio = rawCartSubtotal > 0 ? (item.itemSubtotal / (rawCartSubtotal - itemWiseDiscount || 1)) : 0;
-    const itemTaxable = taxableAmount * ratio;
-    const gstRate = Number(item.product.gstRate || (item.product as any).gst_rate || 5);
-    return acc + itemTaxable * (gstRate / 100);
-  }, 0);
+  // GST = sum of each item's own GST (0 for non-GST products)
+  const gstTotal = cart.reduce((acc, item) => acc + item.gstAmount, 0);
 
   const netAmount = taxableAmount + gstTotal;
   const cgst = Math.round((gstTotal / 2) * 100) / 100;
   const sgst = Math.round((gstTotal / 2) * 100) / 100;
-  
+
   // Grand total
   const unroundedTotal = netAmount;
   const grandTotal = Math.round(unroundedTotal);
@@ -288,11 +287,11 @@ export const BillingView: React.FC<BillingViewProps> = ({
         quantity: c.quantity, // decimal for kg items (0.25, 0.5, 1 ...)
         discount_percent: c.discountPercent,
         subtotal: c.itemSubtotal,
-        gst_rate: Number(c.product.gstRate || (c.product as any).gst_rate || 5),
+        gst_rate: getGstRate(c.product),
         gst_amount: c.gstAmount,
         total: c.itemTotal,
       })),
-      subtotal: Math.round((netAmount * 0.952) * 100) / 100,
+      subtotal: Math.round(taxableAmount * 100) / 100,
       discount: null,
       discount_type: null,
       cgst,
@@ -338,7 +337,7 @@ export const BillingView: React.FC<BillingViewProps> = ({
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 pb-12 items-start">
-      
+
       {/* LEFT COLUMN: Product Catalog & Fast Search (col-span-7) */}
       <div className="lg:col-span-7 space-y-4">
         {/* Search & Category Filter Toolbar */}
@@ -366,11 +365,10 @@ export const BillingView: React.FC<BillingViewProps> = ({
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-4 py-2.5 rounded-lg text-sm font-bold whitespace-nowrap transition-all cursor-pointer ${
-                  selectedCategory === cat
-                    ? 'bg-[#C94F6D] text-white shadow-2xs'
-                    : 'bg-[#FFF9F5] text-[#756B70] hover:text-[#29252A] hover:bg-[#FFF0F3]'
-                }`}
+                className={`px-4 py-2.5 rounded-lg text-sm font-bold whitespace-nowrap transition-all cursor-pointer ${selectedCategory === cat
+                  ? 'bg-[#C94F6D] text-white shadow-2xs'
+                  : 'bg-[#FFF9F5] text-[#756B70] hover:text-[#29252A] hover:bg-[#FFF0F3]'
+                  }`}
               >
                 {cat === 'All' ? t.categoryAll : cat}
               </button>
@@ -400,13 +398,12 @@ export const BillingView: React.FC<BillingViewProps> = ({
               <div
                 key={product.id}
                 onClick={() => !isOut && handleProductClick(product)}
-                className={`bg-white rounded-2xl p-3 border-2 transition-all cursor-pointer flex flex-col justify-between group relative overflow-hidden ${
-                  isOut
-                    ? 'opacity-60 border-[#EDE2E5] cursor-not-allowed'
-                    : inCart
+                className={`bg-white rounded-2xl p-3 border-2 transition-all cursor-pointer flex flex-col justify-between group relative overflow-hidden ${isOut
+                  ? 'opacity-60 border-[#EDE2E5] cursor-not-allowed'
+                  : inCart
                     ? 'border-[#C94F6D] ring-2 ring-[#FCE7EC] shadow-xs'
                     : 'border-[#EDE2E5] hover:border-[#C94F6D]/50 hover:shadow-xs'
-                }`}
+                  }`}
               >
                 {/* Active in-cart indicator */}
                 {inCart && (
@@ -460,13 +457,12 @@ export const BillingView: React.FC<BillingViewProps> = ({
 
                   <button
                     disabled={isOut}
-                    className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${
-                      isOut
-                        ? 'bg-[#EDE2E5] text-[#756B70] cursor-not-allowed'
-                        : inCart
+                    className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${isOut
+                      ? 'bg-[#EDE2E5] text-[#756B70] cursor-not-allowed'
+                      : inCart
                         ? 'bg-[#C94F6D] text-white'
                         : 'bg-[#FFF0F3] text-[#C94F6D] hover:bg-[#C94F6D] hover:text-white'
-                    }`}
+                      }`}
                   >
                     <Plus className="w-5 h-5 stroke-[2.5]" />
                   </button>
@@ -580,10 +576,12 @@ export const BillingView: React.FC<BillingViewProps> = ({
                 <span className="font-semibold text-[#29252A]">₹{rawCartSubtotal.toLocaleString()}</span>
               </div>
 
-              <div className="flex justify-between">
-                <span>{t.taxLabel}</span>
-                <span className="font-semibold text-[#29252A]">₹{Math.round(gstTotal).toLocaleString()}</span>
-              </div>
+              {gstTotal > 0 && (
+                <div className="flex justify-between">
+                  <span>{t.taxLabel}</span>
+                  <span className="font-semibold text-[#29252A]">₹{Math.round(gstTotal).toLocaleString()}</span>
+                </div>
+              )}
             </div>
 
             {/* Grand Total */}
@@ -612,11 +610,10 @@ export const BillingView: React.FC<BillingViewProps> = ({
                       key={method}
                       type="button"
                       onClick={() => setPaymentMethod(method)}
-                      className={`py-3 px-2 rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                        isSelected
-                          ? 'bg-[#C94F6D] text-white shadow-xs shadow-[#C94F6D]/20'
-                          : 'bg-[#FFF9F5] text-[#29252A] border-2 border-[#EDE2E5] hover:bg-[#FFF0F3]'
-                      }`}
+                      className={`py-3 px-2 rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer ${isSelected
+                        ? 'bg-[#C94F6D] text-white shadow-xs shadow-[#C94F6D]/20'
+                        : 'bg-[#FFF9F5] text-[#29252A] border-2 border-[#EDE2E5] hover:bg-[#FFF0F3]'
+                        }`}
                     >
                       {method === 'Cash' && <Banknote className="w-5 h-5" />}
                       {method === 'UPI' && <QrCode className="w-5 h-5" />}
@@ -674,9 +671,8 @@ export const BillingView: React.FC<BillingViewProps> = ({
             <button
               disabled={SaleActionLoad}
               onClick={handleCheckout}
-              className={`w-full py-4 rounded-xl bg-[#C94F6D] hover:bg-[#A83D58] active:scale-[0.99] text-white font-extrabold text-base shadow-md shadow-[#C94F6D]/25 transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                SaleActionLoad ? 'opacity-70 cursor-wait' : ''
-              }`}
+              className={`w-full py-4 rounded-xl bg-[#C94F6D] hover:bg-[#A83D58] active:scale-[0.99] text-white font-extrabold text-base shadow-md shadow-[#C94F6D]/25 transition-all flex items-center justify-center gap-2 cursor-pointer ${SaleActionLoad ? 'opacity-70 cursor-wait' : ''
+                }`}
             >
               {SaleActionLoad ? (
                 <>
@@ -731,11 +727,10 @@ export const BillingView: React.FC<BillingViewProps> = ({
                       key={opt.label}
                       disabled={exceeds}
                       onClick={() => handleSelectWeight(opt.qty)}
-                      className={`py-4 rounded-xl border-2 flex flex-col items-center gap-1 transition-all ${
-                        exceeds
-                          ? 'bg-[#EDE2E5]/50 border-[#EDE2E5] text-[#756B70] cursor-not-allowed opacity-60'
-                          : 'bg-[#FFF9F5] border-[#EDE2E5] hover:border-[#C94F6D] hover:bg-[#FFF0F3] cursor-pointer'
-                      }`}
+                      className={`py-4 rounded-xl border-2 flex flex-col items-center gap-1 transition-all ${exceeds
+                        ? 'bg-[#EDE2E5]/50 border-[#EDE2E5] text-[#756B70] cursor-not-allowed opacity-60'
+                        : 'bg-[#FFF9F5] border-[#EDE2E5] hover:border-[#C94F6D] hover:bg-[#FFF0F3] cursor-pointer'
+                        }`}
                     >
                       <span className="font-extrabold text-base text-[#29252A]">{opt.label}</span>
                       <span className="text-sm font-bold text-[#C94F6D]">₹{optPrice}</span>

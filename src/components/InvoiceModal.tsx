@@ -122,6 +122,8 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
   }
 }`;
   const hasGst = (invoice.cgst ?? 0) > 0 || (invoice.sgst ?? 0) > 0;
+  console.log("invoice", invoice);
+
   return (
     <div className="print-overlay fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-xs overflow-y-auto">
       <style>{printStyles}</style>
