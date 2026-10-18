@@ -191,6 +191,7 @@ export const BulkOrdersView: React.FC<BulkOrdersViewProps> = ({
           <span>New Order</span>
         </button>
         <KitchenKotButton />
+        <KitchenKotButton kind="packing" />
       </div>
 
       {/* Search + status buttons */}

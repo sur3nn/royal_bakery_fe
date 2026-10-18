@@ -1,8 +1,56 @@
 import React, { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ChefHat, X, ChevronLeft, ChevronRight, Loader2, FileDown, Eye } from 'lucide-react';
-
+import { ChefHat, Package, X, ChevronLeft, ChevronRight, Loader2, Eye } from 'lucide-react';
 import { InvoiceModal } from './InvoiceModal';
+
+// Same API base you use for the other KOT downloads
+ //const API = "http://localhost:5000" 
+const API = 'https://indigo-kangaroo-864288.hostingersite.com';
+
+type KotKind = 'kitchen' | 'packing';
+
+// ---------- Tamil labels ----------
+const COMMON = {
+  subtitle: 'தேதி வரம்பை தேர்ந்தெடுக்கவும்',
+  from: 'இருந்து',
+  to: 'வரை',
+  today: 'இன்று',
+  tomorrow: 'நாளை',
+  next7: 'அடுத்த 7 நாட்கள்',
+  thisMonth: 'இந்த மாதம்',
+  days: 'நாள்',
+  pickStart: 'தொடக்க தேதியை தேர்ந்தெடுக்கவும்',
+  pickEnd: 'முடிவு தேதியை தேர்ந்தெடுக்கவும்',
+  prepare: 'KOT பார்',
+  preparing: 'தயாராகிறது...',
+  cancel: 'ரத்து',
+  downloadError: 'KOT எடுக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.',
+  networkError: 'இணைப்பு பிழை. மீண்டும் முயற்சிக்கவும்.',
+};
+
+const PER_KIND: Record<
+  KotKind,
+  { button: string; title: string; hint: string; slipTitle: string }
+> = {
+  kitchen: {
+    button: 'சமையலறை KOT',
+    title: 'சமையலறை KOT',
+    hint: 'தேர்ந்தெடுத்த தேதிகளில் உள்ள எல்லா ஆர்டர்களின் மொத்த அளவும் ஒரே சீட்டில் வரும்.',
+    slipTitle: 'சமையலறை சீட்டு',
+  },
+  packing: {
+    button: 'பேக்கிங் KOT',
+    title: 'பேக்கிங் KOT',
+    hint: 'தேர்ந்தெடுத்த தேதிகளில் உள்ள எல்லா ஆர்டர்களின் பெட்டி விவரமும் ஒரே சீட்டில் வரும்.',
+    slipTitle: 'பேக்கிங் சீட்டு',
+  },
+};
+
+const MONTHS_TA = [
+  'ஜனவரி', 'பிப்ரவரி', 'மார்ச்', 'ஏப்ரல்', 'மே', 'ஜூன்',
+  'ஜூலை', 'ஆகஸ்ட்', 'செப்டம்பர்', 'அக்டோபர்', 'நவம்பர்', 'டிசம்பர்',
+];
+const WEEKDAYS_TA = ['ஞா', 'தி', 'செ', 'பு', 'வி', 'வெ', 'ச'];
 
 // ---------- Tamil quantity formatting (0.25 -> 250 கிராம், 1.5 -> 1.5 கிலோ) ----------
 const isKg = (unit?: string) =>
@@ -22,37 +70,6 @@ const fmtTa = (qty: number, unit?: string) => {
   return qty < 1 ? `${Math.round(qty * 1000)} கிராம்` : `${+qty.toFixed(3)} கிலோ`;
 };
 
-// Same API base you use for the other KOT downloads
- //const API = "http://localhost:5000" 
-const API = 'https://indigo-kangaroo-864288.hostingersite.com';
-
-// ---------- Tamil labels ----------
-const L = {
-  button: 'சமையலறை KOT',
-  title: 'சமையலறை KOT',
-  subtitle: 'தேதி வரம்பை தேர்ந்தெடுக்கவும்',
-  from: 'இருந்து',
-  to: 'வரை',
-  today: 'இன்று',
-  tomorrow: 'நாளை',
-  next7: 'அடுத்த 7 நாட்கள்',
-  thisMonth: 'இந்த மாதம்',
-  days: 'நாள்',
-  hint: 'தேர்ந்தெடுத்த தேதிகளில் உள்ள எல்லா ஆர்டர்களின் மொத்த அளவும் ஒரே சீட்டில் வரும்.',
-  pickStart: 'தொடக்க தேதியை தேர்ந்தெடுக்கவும்',
-  pickEnd: 'முடிவு தேதியை தேர்ந்தெடுக்கவும்',
-  prepare: 'KOT தயார் செய்',
-  preparing: 'தயாராகிறது...',
-  cancel: 'ரத்து',
-  downloadError: 'PDF பதிவிறக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.',
-  networkError: 'இணைப்பு பிழை. மீண்டும் முயற்சிக்கவும்.',
-};
-const MONTHS_TA = [
-  'ஜனவரி', 'பிப்ரவரி', 'மார்ச்', 'ஏப்ரல்', 'மே', 'ஜூன்',
-  'ஜூலை', 'ஆகஸ்ட்', 'செப்டம்பர்', 'அக்டோபர்', 'நவம்பர்', 'டிசம்பர்',
-];
-const WEEKDAYS_TA = ['ஞா', 'தி', 'செ', 'பு', 'வி', 'வெ', 'ச'];
-
 // ---------- Date helpers (local time, no UTC shift) ----------
 const pad = (n: number) => String(n).padStart(2, '0');
 const toIso = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -69,7 +86,14 @@ const addDays = (d: Date, n: number) => {
 const dayCount = (a: string, b: string) =>
   Math.round((fromIso(b).getTime() - fromIso(a).getTime()) / 86400000) + 1;
 
-export const KitchenKotButton: React.FC = () => {
+interface KitchenKotButtonProps {
+  kind?: KotKind; // 'kitchen' (default) | 'packing'
+}
+
+export const KitchenKotButton: React.FC<KitchenKotButtonProps> = ({ kind = 'kitchen' }) => {
+  const L = { ...COMMON, ...PER_KIND[kind] };
+  const Icon = kind === 'packing' ? Package : ChefHat;
+
   const [open, setOpen] = useState(false);
   const [viewMonth, setViewMonth] = useState<Date>(() => {
     const n = new Date();
@@ -80,7 +104,8 @@ export const KitchenKotButton: React.FC = () => {
   const [hover, setHover] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-const [slip, setSlip] = useState<any>(null);
+  const [slip, setSlip] = useState<any>(null);
+
   const todayIso = toIso(new Date());
 
   const openPopup = () => {
@@ -139,61 +164,72 @@ const [slip, setSlip] = useState<any>(null);
 
   const effectiveTo = end ?? start;
 
- const handlePrepare = async () => {
-  if (!start || !effectiveTo) return;
-  setLoading(true);
-  setError('');
+  const handlePrepare = async () => {
+    if (!start || !effectiveTo) return;
+    setLoading(true);
+    setError('');
 
-  try {
-    const res = await fetch(
-      `${API}/api/bulk-orders/kot/kitchen-summary?from=${start}&to=${effectiveTo}&format=json`,
-      { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
-    );
+    try {
+      const url =
+        kind === 'kitchen'
+          ? `${API}/api/bulk-orders/kot/kitchen-summary?from=${start}&to=${effectiveTo}&format=json`
+          : `${API}/api/bulk-orders/kot/packing-summary?from=${start}&to=${effectiveTo}`;
 
-    const j = await res.json().catch(() => null);
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      });
 
-    if (!res.ok || !j?.success) {
-      setError(j?.message || L.downloadError); // Tamil message from the API (e.g. no orders)
-      return;
+      const j = await res.json().catch(() => null);
+
+      if (!res.ok || !j?.success) {
+        setError(j?.message || L.downloadError); // Tamil message from the API (e.g. no orders)
+        return;
+      }
+
+      const { rows, orderCount } = j.data;
+      const range = `${showDate(start)} - ${showDate(effectiveTo)}`;
+
+      // Same shape the InvoiceModal already understands
+      setSlip({
+        id: 0,
+        invoiceNumber: range,
+        customerName: '',
+        customerPhone: '',
+        items: [],
+        subtotal: 0,
+        discountTotal: 0,
+        cgst: 0,
+        sgst: 0,
+        grandTotal: 0,
+        amountPaid: 0,
+        balanceReturn: 0,
+        paymentMethod: '',
+        isKot: true,
+        kotType: kind, // 'kitchen' | 'packing'
+        isSummary: true, // modal shows the date range and order count
+        summaryRange: range,
+        summaryOrderCount: orderCount,
+        kotTitle: L.slipTitle,
+        kotLines: rows.map((r: any) => ({
+          name: r.productName,
+          // kitchen: total to make | packing: each box size x boxes
+          total: fmtTa(Number(r.totalQuantity), r.unit),
+          packs:
+            kind === 'packing'
+              ? (r.packs || []).map(
+                  (p: any) => `${fmtTa(Number(p.packSize), r.unit)} x ${p.packCount} பெட்டி`
+                )
+              : [],
+        })),
+      });
+
+      setOpen(false);
+    } catch {
+      setError(L.networkError);
+    } finally {
+      setLoading(false);
     }
-
-    const { rows, orderCount } = j.data;
-
-    // Same shape the InvoiceModal already understands (kitchen slip)
-    setSlip({
-      id: 0,
-      invoiceNumber: `${showDate(start)} - ${showDate(effectiveTo)}`,
-      customerName: '',
-      customerPhone: '',
-      items: [],
-      subtotal: 0,
-      discountTotal: 0,
-      cgst: 0,
-      sgst: 0,
-      grandTotal: 0,
-      amountPaid: 0,
-      balanceReturn: 0,
-      paymentMethod: '',
-      isKot: true,
-      kotType: 'kitchen',
-      isSummary: true, // tells the modal to show the date range and order count
-      summaryRange: `${showDate(start)} - ${showDate(effectiveTo)}`,
-      summaryOrderCount: orderCount,
-      kotTitle: 'சமையலறை சீட்டு',
-      kotLines: rows.map((r: any) => ({
-        name: r.productName,
-        total: fmtTa(Number(r.totalQuantity), r.unit),
-        packs: [],
-      })),
-    });
-
-    setOpen(false);
-  } catch {
-    setError(L.networkError);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const monthLabel = `${MONTHS_TA[viewMonth.getMonth()]} ${viewMonth.getFullYear()}`;
 
@@ -207,7 +243,7 @@ const [slip, setSlip] = useState<any>(null);
         <div className="px-5 py-4 border-b-2 border-[#EDE2E5] flex items-center justify-between bg-gradient-to-r from-white to-[#FFF9F5]">
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-xl bg-[#FFF0F3] text-[#C94F6D] flex items-center justify-center shrink-0">
-              <ChefHat className="w-6 h-6" />
+              <Icon className="w-6 h-6" />
             </div>
             <div>
               <h3 className="font-bold text-lg text-[#29252A] leading-tight">{L.title}</h3>
@@ -361,7 +397,7 @@ const [slip, setSlip] = useState<any>(null);
                 </>
               ) : (
                 <>
-                 <Eye className="w-4 h-4" />
+                  <Eye className="w-4 h-4" />
                   <span>{L.prepare}</span>
                 </>
               )}
@@ -372,22 +408,26 @@ const [slip, setSlip] = useState<any>(null);
     </div>
   );
 
-return (
-  <>
-    <button
-      type="button"
-      onClick={openPopup}
-      className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#FFF0F3] hover:bg-[#C94F6D] text-[#C94F6D] hover:text-white font-bold text-sm cursor-pointer transition-colors whitespace-nowrap"
-    >
-      <ChefHat className="w-5 h-5" />
-      <span>{L.button}</span>
-    </button>
+  return (
+    <>
+      <button
+        type="button"
+        onClick={openPopup}
+        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm cursor-pointer transition-colors whitespace-nowrap ${
+          kind === 'packing'
+            ? 'bg-[#EBF3FB] hover:bg-[#2F5F96] text-[#2F5F96] hover:text-white'
+            : 'bg-[#FFF0F3] hover:bg-[#C94F6D] text-[#C94F6D] hover:text-white'
+        }`}
+      >
+        <Icon className="w-5 h-5" />
+        <span>{L.button}</span>
+      </button>
 
-    {/* Portals so neither popup is clipped by the header */}
-    {open && createPortal(popup, document.body)}
-    {slip && createPortal(<InvoiceModal invoice={slip} onClose={() => setSlip(null)} />, document.body)}
-  </>
-);
+      {/* Portals so neither popup is clipped by the header */}
+      {open && createPortal(popup, document.body)}
+      {slip && createPortal(<InvoiceModal invoice={slip} onClose={() => setSlip(null)} />, document.body)}
+    </>
+  );
 };
 
 export default KitchenKotButton;
