@@ -103,24 +103,24 @@ export const BillingView: React.FC<BillingViewProps> = ({
   // Cart operations
   const handleAddToCart = (product: Product, qty: number = 1) => {
     const existing = cart.find((item) => item.product.id === product.id);
-    const stockAvailable = Number(product.stock || 0);
+    // const stockAvailable = Number(product.stock || 0);   // stock limit disabled (unlimited stock)
 
     if (existing) {
       const newQty = round3(existing.quantity + qty);
-      if (newQty > stockAvailable) {
-        onToast('warning', 'Stock Limit Reached', `Only ${stockAvailable} ${product.unit} available in stock.`);
-        return;
-      }
+      // if (newQty > stockAvailable) {
+      //   onToast('warning', 'Stock Limit Reached', `Only ${stockAvailable} ${product.unit} available in stock.`);
+      //   return;
+      // }
       handleUpdateQuantity(product.id, newQty);
     } else {
-      if (stockAvailable <= 0) {
-        onToast('error', 'Out of Stock', `${product.name} is currently out of stock.`);
-        return;
-      }
-      if (qty > stockAvailable) {
-        onToast('warning', 'Stock Limit Reached', `Only ${stockAvailable} ${product.unit} available in stock.`);
-        return;
-      }
+      // if (stockAvailable <= 0) {
+      //   onToast('error', 'Out of Stock', `${product.name} is currently out of stock.`);
+      //   return;
+      // }
+      // if (qty > stockAvailable) {
+      //   onToast('warning', 'Stock Limit Reached', `Only ${stockAvailable} ${product.unit} available in stock.`);
+      //   return;
+      // }
 
       const price = Number(product.sellingPrice || (product as any).selling_price || 0);
       const gstRate = getGstRate(product);
@@ -173,12 +173,12 @@ export const BillingView: React.FC<BillingViewProps> = ({
 
         const price = Number(item.product.sellingPrice || (item.product as any).selling_price || 0);
         const gstRate = getGstRate(item.product);
-        const stockAvailable = Number(item.product.stock || 0);
+        // const stockAvailable = Number(item.product.stock || 0);   // stock limit disabled (unlimited stock)
 
-        if (newQty > stockAvailable) {
-          onToast('warning', 'Stock Limit Reached', `Only ${stockAvailable} ${item.product.unit} in inventory.`);
-          return item;
-        }
+        // if (newQty > stockAvailable) {
+        //   onToast('warning', 'Stock Limit Reached', `Only ${stockAvailable} ${item.product.unit} in inventory.`);
+        //   return item;
+        // }
 
         const rawSubtotal = price * newQty;
         const discountAmount = Math.round((rawSubtotal * (item.discountPercent / 100)) * 100) / 100;
@@ -239,6 +239,7 @@ export const BillingView: React.FC<BillingViewProps> = ({
   };
 
   const normalizeInvoiceForModal = (inv: any) => ({
+    id : inv.id,
     invoiceNumber: inv.invoiceNumber || inv.invoice_number,
     dateOnly: inv.dateOnly || inv.sale_date,
     timeOnly: inv.timeOnly || inv.sale_time,
@@ -389,10 +390,14 @@ export const BillingView: React.FC<BillingViewProps> = ({
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5 max-h-[620px] overflow-y-auto pr-1">
           {filteredProducts.map((product) => {
             const inCart = cart.find((c) => c.product.id === product.id);
-            const stockNum = Number(product.stock || 0);
-            const minStockNum = Number(product.minStock ?? (product as any).min_stock ?? 5);
-            const isLow = stockNum <= minStockNum && stockNum > 0;
-            const isOut = stockNum <= 0;
+            // Stock limit disabled (unlimited stock) — to restore, uncomment these 4 lines
+            // and remove the two constants below them.
+            // const stockNum = Number(product.stock || 0);
+            // const minStockNum = Number(product.minStock ?? (product as any).min_stock ?? 5);
+            // const isLow = stockNum <= minStockNum && stockNum > 0;
+            // const isOut = stockNum <= 0;
+            const isLow = false;
+            const isOut = false;
 
             return (
               <div
@@ -422,7 +427,7 @@ export const BillingView: React.FC<BillingViewProps> = ({
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                     />
 
-                    {/* Stock badge */}
+                    {/* Stock badge (disabled: unlimited stock)
                     <div className="absolute bottom-2 left-2">
                       {isOut ? (
                         <span className="text-xs font-bold px-2.5 py-1 rounded-md bg-[#D9535F] text-white">
@@ -438,6 +443,7 @@ export const BillingView: React.FC<BillingViewProps> = ({
                         </span>
                       )}
                     </div>
+                    */}
                   </div>
 
                   <p className="text-sm font-bold text-[#29252A] group-hover:text-[#C94F6D] transition-colors truncate">
@@ -693,8 +699,9 @@ export const BillingView: React.FC<BillingViewProps> = ({
       {/* Weight Selection Popup (for kg products) */}
       {weightProduct && (() => {
         const price = Number(weightProduct.sellingPrice || (weightProduct as any).selling_price || 0);
-        const stock = Number(weightProduct.stock || 0);
-        const alreadyInCart = cart.find((c) => c.product.id === weightProduct.id)?.quantity || 0;
+        // Stock limit disabled (unlimited stock)
+        // const stock = Number(weightProduct.stock || 0);
+        // const alreadyInCart = cart.find((c) => c.product.id === weightProduct.id)?.quantity || 0;
 
         return (
           <div
@@ -721,7 +728,8 @@ export const BillingView: React.FC<BillingViewProps> = ({
               <div className="grid grid-cols-3 gap-3 mt-4">
                 {WEIGHT_OPTIONS.map((opt) => {
                   const optPrice = Math.round(price * opt.qty * 100) / 100;
-                  const exceeds = round3(alreadyInCart + opt.qty) > stock;
+                  // const exceeds = round3(alreadyInCart + opt.qty) > stock;   // stock limit disabled
+                  const exceeds = false;
                   return (
                     <button
                       key={opt.label}
@@ -739,9 +747,11 @@ export const BillingView: React.FC<BillingViewProps> = ({
                 })}
               </div>
 
+              {/* Available stock text (disabled: unlimited stock)
               <p className="text-xs text-[#756B70] mt-4 text-center">
                 Available stock: {stock} kg
               </p>
+              */}
             </div>
           </div>
         );

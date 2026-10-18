@@ -1,6 +1,26 @@
 import React, { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ChefHat, X, ChevronLeft, ChevronRight, Loader2, FileDown } from 'lucide-react';
+import { ChefHat, X, ChevronLeft, ChevronRight, Loader2, FileDown, Eye } from 'lucide-react';
+
+import { InvoiceModal } from './InvoiceModal';
+
+// ---------- Tamil quantity formatting (0.25 -> 250 கிராம், 1.5 -> 1.5 கிலோ) ----------
+const isKg = (unit?: string) =>
+  ['kg', 'kgs', 'kilogram', 'kilograms'].includes(String(unit || '').trim().toLowerCase());
+
+const unitTa = (unit?: string) => {
+  const u = String(unit || '').trim().toLowerCase();
+  if (isKg(unit)) return 'கிலோ';
+  if (['gm', 'g', 'gram', 'grams'].includes(u)) return 'கிராம்';
+  if (['l', 'ltr', 'litre', 'liter', 'litres', 'liters'].includes(u)) return 'லிட்டர்';
+  if (['pcs', 'pc', 'piece', 'pieces', 'nos'].includes(u)) return 'எண்';
+  return unit || '';
+};
+
+const fmtTa = (qty: number, unit?: string) => {
+  if (!isKg(unit)) return `${+qty.toFixed(3)} ${unitTa(unit)}`.trim();
+  return qty < 1 ? `${Math.round(qty * 1000)} கிராம்` : `${+qty.toFixed(3)} கிலோ`;
+};
 
 // Same API base you use for the other KOT downloads
  //const API = "http://localhost:5000" 
@@ -60,7 +80,7 @@ export const KitchenKotButton: React.FC = () => {
   const [hover, setHover] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
+const [slip, setSlip] = useState<any>(null);
   const todayIso = toIso(new Date());
 
   const openPopup = () => {
@@ -119,46 +139,61 @@ export const KitchenKotButton: React.FC = () => {
 
   const effectiveTo = end ?? start;
 
-  const handlePrepare = async () => {
-    if (!start || !effectiveTo) return;
-    setLoading(true);
-    setError('');
+ const handlePrepare = async () => {
+  if (!start || !effectiveTo) return;
+  setLoading(true);
+  setError('');
 
-    try {
-      const res = await fetch(
-        `${API}/api/bulk-orders/kot/kitchen-summary?from=${start}&to=${effectiveTo}`,
-        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
-      );
+  try {
+    const res = await fetch(
+      `${API}/api/bulk-orders/kot/kitchen-summary?from=${start}&to=${effectiveTo}&format=json`,
+      { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+    );
 
-      if (!res.ok) {
-        let msg = L.downloadError;
-        try {
-          const j = await res.json();
-          if (j?.message) msg = j.message; // Tamil message from the API (e.g. no orders)
-        } catch {
-          /* keep default message */
-        }
-        setError(msg);
-        return;
-      }
+    const j = await res.json().catch(() => null);
 
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `kitchen-kot-${start}_to_${effectiveTo}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-
-      setOpen(false);
-    } catch {
-      setError(L.networkError);
-    } finally {
-      setLoading(false);
+    if (!res.ok || !j?.success) {
+      setError(j?.message || L.downloadError); // Tamil message from the API (e.g. no orders)
+      return;
     }
-  };
+
+    const { rows, orderCount } = j.data;
+
+    // Same shape the InvoiceModal already understands (kitchen slip)
+    setSlip({
+      id: 0,
+      invoiceNumber: `${showDate(start)} - ${showDate(effectiveTo)}`,
+      customerName: '',
+      customerPhone: '',
+      items: [],
+      subtotal: 0,
+      discountTotal: 0,
+      cgst: 0,
+      sgst: 0,
+      grandTotal: 0,
+      amountPaid: 0,
+      balanceReturn: 0,
+      paymentMethod: '',
+      isKot: true,
+      kotType: 'kitchen',
+      isSummary: true, // tells the modal to show the date range and order count
+      summaryRange: `${showDate(start)} - ${showDate(effectiveTo)}`,
+      summaryOrderCount: orderCount,
+      kotTitle: 'சமையலறை சீட்டு',
+      kotLines: rows.map((r: any) => ({
+        name: r.productName,
+        total: fmtTa(Number(r.totalQuantity), r.unit),
+        packs: [],
+      })),
+    });
+
+    setOpen(false);
+  } catch {
+    setError(L.networkError);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const monthLabel = `${MONTHS_TA[viewMonth.getMonth()]} ${viewMonth.getFullYear()}`;
 
@@ -326,7 +361,7 @@ export const KitchenKotButton: React.FC = () => {
                 </>
               ) : (
                 <>
-                  <FileDown className="w-4 h-4" />
+                 <Eye className="w-4 h-4" />
                   <span>{L.prepare}</span>
                 </>
               )}
@@ -337,21 +372,22 @@ export const KitchenKotButton: React.FC = () => {
     </div>
   );
 
-  return (
-    <>
-      <button
-        type="button"
-        onClick={openPopup}
-        className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#FFF0F3] hover:bg-[#C94F6D] text-[#C94F6D] hover:text-white font-bold text-sm cursor-pointer transition-colors whitespace-nowrap"
-      >
-        <ChefHat className="w-5 h-5" />
-        <span>{L.button}</span>
-      </button>
+return (
+  <>
+    <button
+      type="button"
+      onClick={openPopup}
+      className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#FFF0F3] hover:bg-[#C94F6D] text-[#C94F6D] hover:text-white font-bold text-sm cursor-pointer transition-colors whitespace-nowrap"
+    >
+      <ChefHat className="w-5 h-5" />
+      <span>{L.button}</span>
+    </button>
 
-      {/* Portal so the popup is never clipped by the header */}
-      {open && createPortal(popup, document.body)}
-    </>
-  );
+    {/* Portals so neither popup is clipped by the header */}
+    {open && createPortal(popup, document.body)}
+    {slip && createPortal(<InvoiceModal invoice={slip} onClose={() => setSlip(null)} />, document.body)}
+  </>
+);
 };
 
 export default KitchenKotButton;

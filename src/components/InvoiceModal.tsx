@@ -2,19 +2,51 @@ import React, { useState } from 'react';
 import { X, Printer, Receipt } from 'lucide-react';
 import { Invoice } from '../types';
 import { LOGO_SRC } from './Header';
-import { formatDateTime } from './Bakerylabels';
 
 interface InvoiceModalProps {
   invoice: Invoice | null;
   onClose: () => void;
 }
 
+const pad = (n: number) => String(n).padStart(2, '0');
+
+// -> 16/10/26 (works with "2026-10-16", "2026-10-16T00:00:00.000Z", or a Date string)
+const getDateText = (value?: string | null) => {
+  if (!value) return '';
+  const m = String(value).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return `${m[3]}/${m[2]}/${m[1].slice(-2)}`; // no timezone shift
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return String(value);
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${String(d.getFullYear()).slice(-2)}`;
+};
+
+const to12h = (h: number, min: number) =>
+  `${h % 12 || 12}:${pad(min)} ${h >= 12 ? 'pm' : 'am'}`; // 8:11 am
+
+// -> 8:11 am (works with "08:11:00" or a full date-time string)
+const getTimeText = (createdAt?: string | null, timeOnly?: string | null) => {
+  if (createdAt) {
+    const d = new Date(createdAt);
+    if (!isNaN(d.getTime())) return to12h(d.getHours(), d.getMinutes());
+  }
+  const m = String(timeOnly ?? '').match(/^(\d{1,2}):(\d{2})/);
+  return m ? to12h(Number(m[1]), Number(m[2])) : String(timeOnly ?? '');
+};
+
+// -> 001, 002 ... (uses the id if it's a number)
+const getBillNo = (inv: any) => {
+  const seq = inv.id;
+  return seq != null && /^\d+$/.test(String(seq))
+    ? String(seq).padStart(3, '0')
+    : inv.id;
+};
+
 export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) => {
   const [printMode, setPrintMode] = useState<'a4' | 'thermal'>('thermal');
 
   if (!invoice) return null;
 
-  // Extra fields added by BulkOrdersView for kitchen / packing slips
+  // Extra fields added by BulkOrdersView / KitchenKotButton for kitchen / packing slips
   const k: any = invoice;
   const isKot = !!k.isKot;
   const isKitchen = k.kotType === 'kitchen';
@@ -26,10 +58,9 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
   // Slips are always thermal
   const isThermal = isKot || printMode === 'thermal';
 
-  // Single-line date + time
-  const dateTimeText = invoice.createdAt
-    ? formatDateTime(invoice.createdAt)
-    : `${invoice.dateOnly ?? ''} ${invoice.timeOnly ?? ''}`.trim();
+  // Separate date and time
+  const dateText = getDateText(invoice.createdAt ?? invoice.dateOnly);
+  const timeText = getTimeText(invoice.createdAt, invoice.timeOnly);
 
   // For a 58mm roll: change 80mm -> 58mm and 68mm -> 48mm below.
   const printStyles = `
@@ -103,12 +134,12 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
   }
   .thermal-receipt, .thermal-receipt * {
     color: #000 !important;
-    font-size: 13px !important;
+    font-size: 14px !important;
     border-color: #000 !important;
     box-sizing: border-box;
   }
-  .thermal-receipt h2 { font-size: 17px !important; font-weight: 800 !important; }
-  .thermal-receipt .grand { font-size: 17px !important; font-weight: 800 !important; }
+  .thermal-receipt h2 { font-size: 18px !important; font-weight: 800 !important; }
+  .thermal-receipt .grand { font-size: 18px !important; font-weight: 800 !important; }
   .thermal-receipt .nowrap { white-space: nowrap !important; }
 
   /* Dark, solid logo (forces light/colored pixels to black) */
@@ -122,7 +153,6 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
   }
 }`;
   const hasGst = (invoice.cgst ?? 0) > 0 || (invoice.sgst ?? 0) > 0;
-  console.log("invoice", invoice);
 
   return (
     <div className="print-overlay fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-xs overflow-y-auto">
@@ -134,7 +164,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
           <div className="flex items-center gap-2">
             <Receipt className="w-5 h-5 text-[#C94F6D]" />
             <h3 className="font-bold text-sm sm:text-base text-[#29252A]">
-              {isKot ? k.kotTitle : 'Invoice Preview'}:{' '}
+              {isKot ? k.kotTitle : 'விலைப்பட்டியல் முன்னோட்டம்'}:{' '}
               <span className="text-[#C94F6D]">{invoice.invoiceNumber}</span>
             </h3>
           </div>
@@ -142,30 +172,30 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
           <div className="flex items-center gap-2">
             {/* Toggle format (not needed for kitchen / packing slips) */}
             {!isKot && (
-              <div className="flex items-center bg-white border border-[#EDE2E5] rounded-xl p-1 text-xs">
+              <div className="flex items-center bg-white border border-[#EDE2E5] rounded-xl p-1 text-[13px]">
                 <button
                   onClick={() => setPrintMode('thermal')}
                   className={`px-2.5 py-1 rounded-lg font-semibold transition-colors cursor-pointer ${isThermal ? 'bg-[#C94F6D] text-white' : 'text-[#756B70]'
                     }`}
                 >
-                  Thermal (80mm)
+                  தெர்மல் (80mm)
                 </button>
                 <button
                   onClick={() => setPrintMode('a4')}
                   className={`px-2.5 py-1 rounded-lg font-semibold transition-colors cursor-pointer ${!isThermal ? 'bg-[#C94F6D] text-white' : 'text-[#756B70]'
                     }`}
                 >
-                  A4 Tax Invoice
+                  A4 வரி விலைப்பட்டியல்
                 </button>
               </div>
             )}
 
             <button
               onClick={handlePrint}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#C94F6D] hover:bg-[#A83D58] text-white text-xs font-bold shadow-xs cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#C94F6D] hover:bg-[#A83D58] text-white text-[13px] font-bold shadow-xs cursor-pointer"
             >
               <Printer className="w-3.5 h-3.5" />
-              <span>Print</span>
+              <span>அச்சிடு</span>
             </button>
 
             <button
@@ -182,7 +212,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
           {isThermal ? (
             isKot ? (
               /* ================= KITCHEN / PACKING SLIP (80mm) ================= */
-              <div className="print-area thermal-receipt max-w-[340px] mx-auto bg-white p-5 border border-[#EDE2E5] shadow-sm rounded-xl font-mono text-[13px] text-black">
+              <div className="print-area thermal-receipt max-w-[340px] mx-auto bg-white p-5 border border-[#EDE2E5] shadow-sm rounded-xl font-mono text-[14px] text-black">
                 {/* Header */}
                 <div className="text-center space-y-1 pb-3 border-b border-dashed border-black">
                   <div className="flex items-center justify-center mx-auto mb-1">
@@ -193,39 +223,56 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                       draggable={false}
                     />
                   </div>
-                  <h2 className="font-extrabold text-base tracking-tight text-black font-sans text-center">
+                  <h2 className="font-extrabold text-lg tracking-tight text-black font-sans text-center">
                     கனகராஜ் கேட்டரிங் & ஸ்வீட்ஸ்
                   </h2>
-                  <p className="font-extrabold text-base tracking-wide text-center">{k.kotTitle}</p>
+                  <p className="font-extrabold text-lg tracking-wide text-center">{k.kotTitle}</p>
                 </div>
 
                 {/* Order info */}
-                <div className="py-2.5 space-y-1 border-b border-dashed border-black text-[13px]">
-                  <div className="flex justify-between gap-2">
-                    <span>Order No</span>
-                    <b className="text-right">{invoice.invoiceNumber}</b>
-                  </div>
-                  <div className="flex justify-between gap-2">
-                    <span>Customer</span>
-                    <b className="text-right">{invoice.customerName}</b>
-                  </div>
-                  <div className="flex justify-between gap-2">
-                    <span>Delivery</span>
-                    <b className="text-right">{k.deliveryText}</b>
-                  </div>
-                  {k.occasion && (
-                    <div className="flex justify-between gap-2">
-                      <span>Occasion</span>
-                      <b className="text-right">{k.occasion}</b>
-                    </div>
+                <div className="py-2.5 space-y-1 border-b border-dashed border-black text-[14px]">
+                  {k.isSummary ? (
+                    <>
+                      {/* Kitchen KOT summary (date range) */}
+                      <div className="flex justify-between gap-2">
+                        <span>தேதி</span>
+                        <b className="text-right">{k.summaryRange}</b>
+                      </div>
+                      <div className="flex justify-between gap-2">
+                        <span>ஆர்டர்கள்</span>
+                        <b className="text-right">{k.summaryOrderCount}</b>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {/* Single order slip */}
+                      <div className="flex justify-between gap-2">
+                        <span>ஆர்டர் எண்</span>
+                        <b className="text-right">{invoice.invoiceNumber}</b>
+                      </div>
+                      <div className="flex justify-between gap-2">
+                        <span>வாடிக்கையாளர்</span>
+                        <b className="text-right">{invoice.customerName}</b>
+                      </div>
+                      <div className="flex justify-between gap-2">
+                        <span>டெலிவரி</span>
+                        <b className="text-right">{k.deliveryText}</b>
+                      </div>
+                      {k.occasion && (
+                        <div className="flex justify-between gap-2">
+                          <span>நிகழ்வு</span>
+                          <b className="text-right">{k.occasion}</b>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
 
                 {/* Items */}
                 <div className="py-3 border-b border-dashed border-black space-y-3">
                   <div className="flex justify-between font-bold pb-1 border-b border-black">
-                    <span>ITEM</span>
-                    <span>{isKitchen ? 'TOTAL TO MAKE' : 'PACKING'}</span>
+                    <span>பொருள்</span>
+                    <span>{isKitchen ? 'செய்ய வேண்டிய மொத்தம்' : 'பேக்கிங்'}</span>
                   </div>
 
                   {(k.kotLines || []).map((l: any, i: number) => (
@@ -234,7 +281,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
 
                       {isKitchen ? (
                         <div className="flex justify-between pl-2">
-                          <span>Make</span>
+                          <span>செய்ய</span>
                           <b className="whitespace-nowrap">{l.total}</b>
                         </div>
                       ) : (
@@ -251,19 +298,19 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                 {/* Special instructions */}
                 {k.specialInstructions && (
                   <div className="py-2 border-b border-dashed border-black">
-                    <p className="font-bold">Note:</p>
+                    <p className="font-bold">குறிப்பு:</p>
                     <p className="break-words">{k.specialInstructions}</p>
                   </div>
                 )}
 
                 {/* Footer */}
-                <div className="text-center pt-3 text-[12px]">
-                  <p className="font-bold">*** {isKitchen ? 'KITCHEN COPY' : 'PACKING COPY'} ***</p>
+                <div className="text-center pt-3 text-[13px]">
+                  <p className="font-bold">*** {isKitchen ? 'சமையலறை நகல்' : 'பேக்கிங் நகல்'} ***</p>
                 </div>
               </div>
             ) : (
               /* ================= THERMAL 80mm RECEIPT LAYOUT ================= */
-              <div className="print-area thermal-receipt max-w-[340px] mx-auto bg-white p-5 border border-[#EDE2E5] shadow-sm rounded-xl font-mono text-[13px] text-black">
+              <div className="print-area thermal-receipt max-w-[340px] mx-auto bg-white p-5 border border-[#EDE2E5] shadow-sm rounded-xl font-mono text-[14px] text-black">
                 {/* Brand Header */}
                 <div className="text-center space-y-1 pb-3 border-b border-dashed border-black">
                   <div className="flex items-center justify-center mx-auto mb-1">
@@ -274,105 +321,140 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                       draggable={false}
                     />
                   </div>
-                  <h2 className="font-extrabold text-base tracking-tight text-black font-sans text-center">
+                  <h2 className="font-extrabold text-lg tracking-tight text-black font-sans text-center">
                     கனகராஜ் கேட்டரிங் & ஸ்வீட்ஸ்
                   </h2>
-                  <p className="text-[12px] text-black text-center">
+                  <p className="text-[13px] text-black text-center">
                     29/14, ஆதிசெல்வன் தெரு, அம்மாப்பேட்டை, சேலம்-3
                   </p>
-                  <p className="text-[12px] text-black text-center">
-                    PH: 0427-2243676 Cell: 9360013676, 9043013676
+                  <p className="text-[13px] text-black text-center">
+                    தொலைபேசி: 0427-2243676 செல்: 9360013676, 9043013676
                   </p>
-                  {/* <p className="text-[12px] text-black font-bold">
-                    FSSAI Lic No: 12423008000456
-                  </p> */}
                 </div>
 
                 {/* Bill Details */}
-                <div className="py-2.5 space-y-1 border-b border-dashed border-black text-[13px]">
-                  <p className="nowrap whitespace-nowrap">Bill No: {invoice.invoiceNumber}</p>
-                  <p className="nowrap whitespace-nowrap">Date: {dateTimeText}</p>
-                  {invoice.customerName && invoice.customerName !== 'Counter Customer' ? (
-                    <>
-                      <p className="font-bold text-black text-sm mt-0.5">{invoice.customerName}</p>
-                      <p className="text-black">Phone: {invoice.customerPhone}</p>
-                    </>
-                  ) : (
-                    <p className="font-bold text-black text-sm mt-0.5">Counter Customer</p>
-                  )}
+                <div className="py-2.5 space-y-1 border-b border-dashed border-black text-[14px]">
+                  <p className="nowrap whitespace-nowrap">பில் எண்: {getBillNo(invoice)}</p>
+                  <p className="nowrap whitespace-nowrap">தேதி: {dateText}</p>
+                  <p className="nowrap whitespace-nowrap">நேரம்: {timeText}</p>
                 </div>
 
-                {/* Items List (name on its own line, qty x rate and amount below) */}
-                <div className="py-3 border-b border-dashed border-black space-y-2">
-                  <div className="flex justify-between font-bold text-[13px] pb-1 border-b border-black">
-                    <span>ITEM</span>
-                    <span>QTY x RATE = AMT</span>
+                {/* Items List */}
+                <div className="py-3 border-b border-dashed border-black">
+                  {/* Header */}
+                  <div className="grid grid-cols-[minmax(0,1fr)_17mm_15mm_17mm] font-bold text-[14px] pb-1 border-b border-black">
+                    <span>பொருள்</span>
+                    <span className="text-left">அளவு</span>
+                    <span className="text-right pr-2">விலை</span>
+                    <span className="text-right pr-1">தொகை</span>
                   </div>
-                  {invoice.items.map((it, idx) => (
-                    <div key={idx} className="text-[13px]">
-                      <p className="font-bold text-black leading-tight break-words">{it.productName}</p>
-                      <div className="flex justify-between text-black">
-                        <span className="whitespace-nowrap">
-                          {it.quantity} {it.unit}
-                        </span>
-                        <span className="font-bold whitespace-nowrap">
-                          ₹{it.total.toLocaleString()}
-                        </span>
+
+                  {/* Rows */}
+                  <div className="space-y-1.5 pt-1">
+                    {invoice.items.map((it, idx) => (
+                      <div key={idx}>
+                        {/* Product name: each word on its own line, tight line height */}
+                        <div className="font-bold text-black leading-[1.05]">
+                          {String(it.productName)
+                            .trim()
+                            .split(/\s+/)
+                            .map((w, i) => (
+                              <span key={i} className="block break-words">
+                                {w}
+                              </span>
+                            ))}
+                        </div>
+
+                        {/* Qty / rate / amount: pulled up under the name */}
+                        <div className="grid grid-cols-[minmax(0,1fr)_17mm_15mm_17mm] text-[14px] leading-none -mt-3">
+                          <span />
+                          <span className="text-left whitespace-nowrap tabular-nums">
+                            {it.quantity} {it.unit}
+                          </span>
+                          <span className="text-right pr-2 whitespace-nowrap tabular-nums">
+                            ₹{it.price.toLocaleString()}
+                          </span>
+                          <span className="text-right pr-1 font-bold whitespace-nowrap tabular-nums">
+                            ₹{it.total.toLocaleString()}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
 
                 {/* Tax & Grand Total */}
-                <div className="py-2.5 space-y-1 text-[13px] border-b border-dashed border-black">
+                <div className="py-2.5 space-y-1 text-[14px] border-b border-dashed border-black">
                   <div className="flex justify-between text-black">
-                    <span>Item Subtotal:</span>
+                    <span>மொத்தம்:</span>
                     <span>₹{invoice.subtotal.toLocaleString()}</span>
                   </div>
                   {invoice.discountTotal > 0 && (
                     <div className="flex justify-between text-black">
-                      <span>Discount:</span>
+                      <span>தள்ளுபடி:</span>
                       <span>-₹{invoice.discountTotal.toLocaleString()}</span>
                     </div>
                   )}
                   {hasGst && (
                     <>
                       <div className="flex justify-between text-black">
-                        <span>CGST (2.5%):</span>
+                        <span>சி.ஜி.எஸ்.டி (2.5%):</span>
                         <span>₹{invoice.cgst.toLocaleString()}</span>
                       </div>
                       <div className="flex justify-between text-black">
-                        <span>SGST (2.5%):</span>
+                        <span>எஸ்.ஜி.எஸ்.டி (2.5%):</span>
                         <span>₹{invoice.sgst.toLocaleString()}</span>
                       </div>
                     </>
                   )}
 
                   <div className="flex justify-between items-center pt-2 font-extrabold text-black font-sans">
-                    <span className="grand">NET PAYABLE:</span>
+                    <span className="grand">செலுத்த வேண்டிய தொகை:</span>
                     <span className="grand">₹{invoice.grandTotal.toLocaleString()}</span>
                   </div>
                 </div>
 
-                {/* Payment tender info */}
-                <div className="py-2 space-y-1 text-[12px] text-black border-b border-dashed border-black">
-                  <div className="flex justify-between">
-                    <span>Paid By: {invoice.paymentMethod}</span>
-                    <span>Tendered: ₹{invoice.amountPaid.toLocaleString()}</span>
-                  </div>
-                  {invoice.balanceReturn > 0 && (
-                    <div className="flex justify-between font-bold text-black">
-                      <span>Change Returned:</span>
-                      <span>₹{invoice.balanceReturn.toLocaleString()}</span>
+                {/* Payment info */}
+                <div className="py-2 space-y-1 text-[14px] text-black">
+                  {invoice.paymentMethod && !k.isBulk && (
+                    <div className="flex justify-between">
+                      <span>செலுத்தும் முறை:</span>
+                      <span>{invoice.paymentMethod}</span>
                     </div>
+                  )}
+
+                  {k.isBulk ? (
+                    <>
+                      {/* Bulk order bill: advance and balance as separate rows */}
+                      <div className="flex justify-between">
+                        <span>முன்பணம்:</span>
+                        <span>₹{Number(k.advancePaid ?? 0).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between font-bold">
+                        <span>மீதித் தொகை:</span>
+                        <span>₹{Number(k.balanceDue ?? 0).toLocaleString()}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {/* Normal counter bill */}
+                      <div className="flex justify-between">
+                        <span>கொடுத்தது:</span>
+                        <span>₹{invoice.amountPaid.toLocaleString()}</span>
+                      </div>
+                      {invoice.balanceReturn > 0 && (
+                        <div className="flex justify-between font-bold text-black">
+                          <span>மீதி திருப்பியது:</span>
+                          <span>₹{invoice.balanceReturn.toLocaleString()}</span>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
 
-                {/* Footer Blessing */}
-                <div className="text-center pt-3 text-[12px] text-black space-y-0.5">
-                  <p className="font-bold">*** THANK YOU FOR VISITING ***</p>
-                  <p>Taste the Tradition of Pure Ghee Sweets!</p>
-                  <p>Have a Sweet Day Ahead!</p>
+                {/* Footer */}
+                <div className="text-center pt-3 border-t border-dashed border-black text-[14px]">
+                  <p className="font-bold">*** வருகைக்கு நன்றி ***</p>
                 </div>
               </div>
             )
@@ -391,64 +473,58 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                     />
                   </div>
                   <div>
-                    <h2 className="font-extrabold text-xl text-[#29252A] tracking-tight">
+                    <h2 className="font-extrabold text-2xl text-[#29252A] tracking-tight">
                       கனகராஜ் கேட்டரிங் & ஸ்வீட்ஸ்
                     </h2>
-                    <p className="text-xs text-[#756B70]">
+                    <p className="text-[13px] text-[#756B70]">
                       29/14, ஆதிசெல்வன் தெரு, அம்மாப்பேட்டை, சேலம்-3
                     </p>
-                    <p className="text-xs text-[#756B70]">
-                      PH: 0427-2243676 Cell: 9360013676, 9043013676
+                    <p className="text-[13px] text-[#756B70]">
+                      தொலைபேசி: 0427-2243676 செல்: 9360013676, 9043013676
                     </p>
-                    {/* <p className="text-[11px] font-semibold text-[#C94F6D]">
-                      FSSAI Lic No: 12423008000456
-                    </p> */}
                   </div>
                 </div>
 
                 <div className="text-right">
-                  <span className="inline-block px-3 py-1 rounded-lg bg-[#FFF0F3] text-[#C94F6D] font-extrabold text-xs uppercase tracking-wider">
-                    Tax Invoice
+                  <span className="inline-block px-3 py-1 rounded-lg bg-[#FFF0F3] text-[#C94F6D] font-extrabold text-[13px] tracking-wider">
+                    வரி விலைப்பட்டியல்
                   </span>
-                  <p className="font-mono font-bold text-sm text-[#29252A] mt-2">
+                  <p className="font-mono font-bold text-[15px] text-[#29252A] mt-2">
                     {invoice.invoiceNumber}
                   </p>
-                  <p className="text-xs text-[#756B70] whitespace-nowrap">
-                    Date : {formatDateTime(invoice.createdAt ?? `${invoice.dateOnly} ${invoice.timeOnly}`)}
-                  </p>
+                  <p className="text-[13px] text-[#756B70] whitespace-nowrap">தேதி : {dateText}</p>
+                  <p className="text-[13px] text-[#756B70] whitespace-nowrap">நேரம் : {timeText}</p>
                 </div>
               </div>
 
               {/* Customer & Bill Meta */}
-              <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-[#FFF9F5] border border-[#EDE2E5] text-xs">
+              <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-[#FFF9F5] border border-[#EDE2E5] text-[13px]">
                 <div>
-                  <p className="font-bold text-[#756B70] uppercase tracking-wider text-[10px]">
-                    Billed To:
+                  <p className="font-bold text-[#756B70] tracking-wider text-[11px]">
+                    பில் பெறுபவர்:
                   </p>
-                  <p className="font-bold text-[#29252A] text-sm mt-0.5">{invoice.customerName}</p>
-                  <p className="text-[#756B70]">Phone: {invoice.customerPhone}</p>
+                  <p className="font-bold text-[#29252A] text-[15px] mt-0.5">{invoice.customerName}</p>
+                  <p className="text-[#756B70]">தொலைபேசி: {invoice.customerPhone}</p>
                 </div>
                 <div className="text-right">
-                  <p className="font-bold text-[#756B70] uppercase tracking-wider text-[10px]">
-                    Billing Details:
+                  <p className="font-bold text-[#756B70] tracking-wider text-[11px]">
+                    பில் விவரங்கள்:
                   </p>
-                  <p className="text-[#29252A] mt-0.5">Counter: Counter #1 (POS)</p>
-                  {/* <p className="text-[#29252A]">Cashier: {invoice.cashierName}</p> */}
-                  {/* <p className="font-semibold text-[#3FA56B]">Status: {invoice.status}</p> */}
+                  <p className="text-[#29252A] mt-0.5">கவுண்டர்: கவுண்டர் #1 (POS)</p>
                 </div>
               </div>
 
               {/* Items Table */}
               <div className="border border-[#EDE2E5] rounded-xl overflow-hidden">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead className="bg-[#FFF9F5] border-b border-[#EDE2E5] text-[11px] font-bold text-[#756B70] uppercase">
+                <table className="w-full text-left text-[13px] border-collapse">
+                  <thead className="bg-[#FFF9F5] border-b border-[#EDE2E5] text-xs font-bold text-[#756B70]">
                     <tr>
                       <th className="py-2.5 px-3">#</th>
-                      <th className="py-2.5 px-3">Item Description</th>
-                      <th className="py-2.5 px-3">Category</th>
-                      <th className="py-2.5 px-3 text-right">Qty</th>
-                      <th className="py-2.5 px-3 text-right">Rate</th>
-                      <th className="py-2.5 px-3 text-right">Amount</th>
+                      <th className="py-2.5 px-3">பொருள் விவரம்</th>
+                      <th className="py-2.5 px-3">வகை</th>
+                      <th className="py-2.5 px-3 text-right">அளவு</th>
+                      <th className="py-2.5 px-3 text-right">விலை</th>
+                      <th className="py-2.5 px-3 text-right">தொகை</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#EDE2E5]">
@@ -472,53 +548,53 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
 
               {/* Financial Calculation */}
               <div className="flex justify-end pt-2">
-                <div className="w-72 space-y-1.5 text-xs">
+                <div className="w-80 space-y-1.5 text-[13px]">
                   <div className="flex justify-between text-[#756B70]">
-                    <span>Taxable Value:</span>
+                    <span>வரிக்குட்பட்ட மதிப்பு:</span>
                     <span className="font-semibold text-[#29252A]">₹{invoice.subtotal.toLocaleString()}</span>
                   </div>
                   {invoice.discountTotal > 0 && (
                     <div className="flex justify-between text-[#3FA56B]">
-                      <span>Discount:</span>
+                      <span>தள்ளுபடி:</span>
                       <span className="font-semibold">-₹{invoice.discountTotal.toLocaleString()}</span>
                     </div>
                   )}
                   {hasGst && (
                     <>
                       <div className="flex justify-between text-[#756B70]">
-                        <span>CGST (2.5%):</span>
+                        <span>சி.ஜி.எஸ்.டி (2.5%):</span>
                         <span className="font-semibold text-[#29252A]">₹{invoice.cgst.toLocaleString()}</span>
                       </div>
                       <div className="flex justify-between text-[#756B70]">
-                        <span>SGST (2.5%):</span>
+                        <span>எஸ்.ஜி.எஸ்.டி (2.5%):</span>
                         <span className="font-semibold text-[#29252A]">₹{invoice.sgst.toLocaleString()}</span>
                       </div>
                     </>
                   )}
-                  <div className="flex justify-between items-center pt-2 border-t border-[#EDE2E5] text-base font-extrabold text-[#29252A]">
-                    <span>Grand Total:</span>
-                    <span className="text-[#C94F6D] text-lg font-extrabold">
+                  <div className="flex justify-between items-center pt-2 border-t border-[#EDE2E5] text-[17px] font-extrabold text-[#29252A]">
+                    <span>மொத்த தொகை:</span>
+                    <span className="text-[#C94F6D] text-xl font-extrabold">
                       ₹{invoice.grandTotal.toLocaleString()}
                     </span>
                   </div>
-                  <div className="flex justify-between text-[11px] text-[#756B70] pt-1">
-                    <span>Payment Mode:</span>
+                  <div className="flex justify-between text-xs text-[#756B70] pt-1">
+                    <span>செலுத்தும் முறை:</span>
                     <span className="font-semibold text-[#29252A]">{invoice.paymentMethod}</span>
                   </div>
                 </div>
               </div>
 
               {/* Footer Signature & Terms */}
-              <div className="pt-6 border-t border-[#EDE2E5] flex justify-between items-end text-xs text-[#756B70]">
+              <div className="pt-6 border-t border-[#EDE2E5] flex justify-between items-end text-[13px] text-[#756B70]">
                 <div>
-                  <p className="font-semibold text-[#29252A]">Terms & Conditions:</p>
-                  <p className="text-[11px]">1. Goods once sold will not be taken back or exchanged.</p>
-                  <p className="text-[11px]">2. Consume fresh milk sweets within 24 hours.</p>
+                  <p className="font-semibold text-[#29252A]">நிபந்தனைகள்:</p>
+                  <p className="text-xs">1. விற்ற பொருட்கள் திரும்பப் பெறப்படவோ மாற்றப்படவோ மாட்டாது.</p>
+                  <p className="text-xs">2. பால் இனிப்புகளை 24 மணி நேரத்திற்குள் உண்ணவும்.</p>
                 </div>
                 <div className="text-right">
                   <div className="h-10"></div>
                   <p className="border-t border-[#29252A]/40 pt-1 font-bold text-[#29252A]">
-                    Authorized Signatory
+                    அங்கீகரிக்கப்பட்ட கையொப்பம்
                   </p>
                 </div>
               </div>

@@ -516,7 +516,7 @@ useEffect(() => {
           </div>
 
           {/* Standard Product Fields */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div className="  gap-5">
             <div>
               <label className="text-sm font-bold text-[#29252A] block mb-2">
                 {t.productName}
@@ -530,7 +530,7 @@ useEffect(() => {
                 className="w-full px-4 py-3 bg-white border-2 border-[#EDE2E5] rounded-xl text-sm sm:text-base text-[#29252A] focus:border-[#C94F6D] focus:ring-4 focus:ring-[#FCE7EC] outline-none"
               />
             </div>
-
+{/* 
             <div>
               <label className="text-sm font-bold text-[#29252A] block mb-2">
                 {t.productCode}
@@ -542,7 +542,7 @@ useEffect(() => {
                 placeholder={t.productCodePlaceholder}
                 className="w-full px-4 py-3 bg-white border-2 border-[#EDE2E5] rounded-xl text-sm sm:text-base text-[#29252A] focus:border-[#C94F6D] focus:ring-4 focus:ring-[#FCE7EC] outline-none"
               />
-            </div>
+            </div> */}
           </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -627,18 +627,17 @@ useEffect(() => {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            <div>
-              <label className="text-sm font-bold text-[#29252A] block mb-2">
-                {t.currentStock} ({unit}) *
-              </label>
-              <input
-                type="number"
-                required
-                value={stock}
-                onChange={(e) => setStock(Number(e.target.value))}
-                className="w-full px-4 py-3 bg-white border-2 border-[#EDE2E5] rounded-xl text-sm sm:text-base text-[#29252A] focus:border-[#C94F6D] focus:ring-4 focus:ring-[#FCE7EC] outline-none"
-              />
-            </div>
+           <div>
+  <label className="text-sm font-bold text-[#29252A] block mb-2">
+    {t.currentStock} ({unit})
+  </label>
+  <input
+    type="number"
+    value={stock}
+    onChange={(e) => setStock(Number(e.target.value))}
+    className="w-full px-4 py-3 bg-white border-2 border-[#EDE2E5] rounded-xl text-sm sm:text-base text-[#29252A] focus:border-[#C94F6D] focus:ring-4 focus:ring-[#FCE7EC] outline-none"
+  />
+</div>
 
             <div>
               <label className="text-sm font-bold text-[#29252A] block mb-2">

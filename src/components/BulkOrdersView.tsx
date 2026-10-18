@@ -66,6 +66,7 @@ const toInvoice = (o: any): Invoice => {
   const deliveryTime = o.deliveryTime ?? o.delivery_time;
 
   return {
+    id:o.id ,
     invoiceNumber: o.orderNumber ?? o.order_number ?? '',
     dateOnly: formatDate(delivery),
     timeOnly: formatTime(deliveryTime),
@@ -81,7 +82,12 @@ const toInvoice = (o: any): Invoice => {
     grandTotal: total,
     amountPaid: advance,
     balanceReturn: 0,
-    paymentMethod: 'Advance',
+ // Cash / UPI only (the advance amount is shown separately)
+paymentMethod: (() => {
+  const m = String(o.paymentMethod ?? o.payment_method ?? '').trim().toLowerCase();
+  if (!m) return '';
+  return m.includes('upi') ? 'UPI' : 'Cash';
+})(),
     items: (o.products || []).map((i: any) => ({
       productName: i.productName ?? i.product_name,
       category: '',

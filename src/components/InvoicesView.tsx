@@ -68,6 +68,7 @@ export const InvoicesView: React.FC<InvoicesViewProps> = ({
     .filter((i: any) => (i.paymentMethod || i.payment_method) === 'Cash')
     .reduce((acc, i: any) => acc + Number(i.grandTotal ?? i.grand_total ?? 0), 0);
 const normalizeInvoiceForModal = (inv: any) => ({
+  id:inv.id,
   invoiceNumber: inv.invoiceNumber || inv.invoice_number,
   dateOnly: inv.dateOnly || inv.sale_date,
   timeOnly: inv.timeOnly || inv.sale_time,

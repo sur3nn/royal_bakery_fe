@@ -77,6 +77,7 @@ export default function App() {
     SelectedProduct,
     CategoriesData,
   } = useSelector((state: RootState) => state.bakery);
+console.log("sale",SalesData);
 
   // Fetch all initial data from backend API on mount
   useEffect(() => {
@@ -142,6 +143,8 @@ export default function App() {
 
   // Complete Billing Checkout
   const handleCheckoutComplete = (createdInvoice: Invoice) => {
+   
+    
     setSelectedInvoiceForModal(createdInvoice);
   };
 
