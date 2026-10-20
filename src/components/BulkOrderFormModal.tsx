@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { X, ShoppingBag, Plus, Minus, Trash2, Clock, User, Pencil, Search, ChevronLeft } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { X, ShoppingBag, Plus, Trash2, Clock, User, Pencil, Search, ChevronLeft } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 
 import { BulkOrder, BulkOrderStatus, Product } from '../types';
@@ -23,43 +23,33 @@ const box = {
   boxes: 'பெட்டி',
   total: 'மொத்தம்',
   needSize: 'Add at least one item with a box size.',
-  next: 'அடுத்து',
   back: 'பின்',
   add: 'ஆர்டரில் சேர்',
   save: 'சேமி',
-  cancel: 'ரத்து',
   pickProduct: 'எந்த பொருள்?',
   pickProductEn: 'Choose the product',
   searchProduct: 'Search product...',
-  howManyTitle: (unit: string) => `எத்தனை ${unit} தயாரிக்க வேண்டும்?`,
-  howManyEn: 'How much do we need to prepare in total? (type in kg or g)',
-  perBoxTitle: (unit: string) => `ஒரு பெட்டியில் எத்தனை ${unit}?`,
   edit: 'மாற்று',
   noItems: 'இன்னும் பொருள் எதுவும் இல்லை',
   noItemsEn: 'Tap to add the first item',
-  other: 'மற்றவை',
-  otherEn: 'Type',
-  typeBoxSize: 'Type the box size',
-  remaining: 'மீதம்',
-  tapSizes: 'Tap a size to add a box. You can mix sizes.',
-  addBox: 'Add',
-  mustFill: 'Fill the full weight to save',
-  tooBig: 'Larger than the remaining weight',
+  boxDetails: 'பெட்டி விவரம்',
+  boxDetailsEn: 'Enter the box size and how many boxes. Add more rows for other sizes.',
+  boxSize: 'Box size',
+  boxCount: 'No. of boxes',
+  addRow: 'Add another box size',
+  fillRow: 'Enter box size and number of boxes',
 };
 
 // ---------- Weight (kg) helpers ----------
-const WEIGHT_OPTIONS = [
-  { label: '250 gm', qty: 0.25 },
-  { label: '500 gm', qty: 0.5 },
-  { label: '1 kg', qty: 1 },
-];
-const COUNT_BOX_OPTIONS = [1, 2, 6, 12];
-
 const isKgUnit = (unit?: string) =>
   ['kg', 'kgs', 'kilogram', 'kilograms'].includes(String(unit || '').trim().toLowerCase());
 
 // 0.25 -> "250 gm", 1.5 -> "1.5 kg"; non-kg units are shown as-is
+const isGramUnit = (unit?: string) =>
+  ['g', 'gm', 'gms', 'gram', 'grams'].includes(String(unit || '').trim().toLowerCase());
+
 const formatQty = (qty: number, unit?: string) => {
+  if (isGramUnit(unit)) return `${qty} gm`;
   if (!isKgUnit(unit)) return `${qty} ${unit || ''}`.trim();
   return qty < 1 ? `${Math.round(qty * 1000)} gm` : `${+qty.toFixed(3)} kg`;
 };
@@ -79,7 +69,7 @@ const getCurrentTime = (): string => {
 // One line of the order.
 // quantity = packSize x packCount  (kitchen makes this much)
 // packSize and packCount           (packing team packs this)
-// For kg products packSize is in kg: 0.25 / 0.5 / 1 / any typed value
+// For kg products packSize is in kg: any typed value (kg or g)
 // A product with several box sizes is saved as several lines (one per box size).
 type OrderItem = {
   productId: string;
@@ -92,18 +82,39 @@ type OrderItem = {
   total: number;
 };
 
-const makeItem = (p: Product, packSize = 1, packCount = 1): OrderItem => {
-  const price = Number(p.sellingPrice) || 0;
-  const quantity = +(packSize * packCount).toFixed(3);
+// Quantity of a line expressed in kg (lines can be in kg or in g)
+const itemKg = (it: OrderItem) => (isGramUnit(it.unit) ? it.quantity / 1000 : it.quantity);
+
+// packSizeKg is always kg here. If asGrams is true, the line is sent in grams:
+// unit "g", packSize/quantity in grams, price per gram. The total amount is the same either way.
+const makeItem = (p: Product, packSizeKg = 1, packCount = 1, asGrams = false): OrderItem => {
+  const pricePerKg = Number(p.sellingPrice) || 0;
+  const totalKg = +(packSizeKg * packCount).toFixed(3);
+  const total = +(pricePerKg * totalKg).toFixed(2);
+
+  if (asGrams) {
+    const packSize = grams(packSizeKg);
+    return {
+      productId: String(p.id),
+      productName: p.name,
+      unit: 'g',
+      price: +(pricePerKg / 1000).toFixed(4),
+      packSize,
+      packCount,
+      quantity: packSize * packCount,
+      total,
+    };
+  }
+
   return {
     productId: String(p.id),
     productName: p.name,
     unit: p.unit,
-    price,
-    packSize,
+    price: pricePerKg,
+    packSize: packSizeKg,
     packCount,
-    quantity,
-    total: +(price * quantity).toFixed(2),
+    quantity: totalKg,
+    total,
   };
 };
 
@@ -115,25 +126,27 @@ const heading = 'text-sm font-bold text-[#C94F6D] flex items-center gap-2';
 /* =====================================================================
    WEIGHT INPUT — type a weight in kg OR g (toggle). Value is always kg.
    ===================================================================== */
+type WUnit = 'kg' | 'g';
+
 interface WeightInputProps {
-  value: number; // in kg
+  value: number; // always in kg
+  unit: WUnit;
+  onUnitChange: (u: WUnit) => void;
   onChange: (kg: number) => void;
   big?: boolean;
 }
 
-const WeightInput: React.FC<WeightInputProps> = ({ value, onChange, big = false }) => {
-  const [unit, setUnit] = useState<'kg' | 'g'>('kg');
-
-  const toText = (kg: number, u: 'kg' | 'g') =>
+const WeightInput: React.FC<WeightInputProps> = ({ value, unit, onUnitChange, onChange, big = false }) => {
+  const toText = (kg: number, u: WUnit) =>
     kg > 0 ? String(u === 'g' ? Math.round(kg * 1000) : +kg.toFixed(3)) : '';
-  const toKg = (txt: string, u: 'kg' | 'g') => {
+  const toKg = (txt: string, u: WUnit) => {
     const n = Number(txt) || 0;
     return u === 'g' ? Math.round(n) / 1000 : Math.round(n * 1000) / 1000;
   };
 
   const [text, setText] = useState<string>(toText(value, 'kg'));
 
-  // Keep the text in sync when the value is changed from outside (+/- buttons, chips)
+  // Keep the text in sync when the value is changed from outside
   // or when the unit toggle is switched (value stays the same, text is converted).
   useEffect(() => {
     if (toKg(text, unit) !== value) setText(toText(value, unit));
@@ -155,7 +168,7 @@ const WeightInput: React.FC<WeightInputProps> = ({ value, onChange, big = false 
         className={
           big
             ? 'w-28 text-center text-4xl font-extrabold text-[#29252A] bg-white border-b-4 border-[#C94F6D] outline-none py-1'
-            : 'w-28 px-3 py-2.5 text-center text-lg font-bold text-[#29252A] bg-white border-2 border-[#EDE2E5] rounded-xl focus:border-[#C94F6D] outline-none'
+            : 'w-24 px-3 py-2.5 text-center text-lg font-bold text-[#29252A] bg-white border-2 border-[#EDE2E5] rounded-xl focus:border-[#C94F6D] outline-none'
         }
       />
       <div className="flex rounded-lg overflow-hidden border-2 border-[#EDE2E5]">
@@ -163,7 +176,7 @@ const WeightInput: React.FC<WeightInputProps> = ({ value, onChange, big = false 
           <button
             key={u}
             type="button"
-            onClick={() => setUnit(u)}
+            onClick={() => onUnitChange(u)}
             className={`px-3 py-2 text-sm font-bold cursor-pointer transition-colors ${
               unit === u ? 'bg-[#C94F6D] text-white' : 'bg-white text-[#756B70] hover:bg-[#FFF0F3]'
             }`}
@@ -177,14 +190,12 @@ const WeightInput: React.FC<WeightInputProps> = ({ value, onChange, big = false 
 };
 
 /* =====================================================================
-   ITEM POPUP  —  3 simple steps
+   ITEM POPUP  —  2 steps
    1) choose product
-   2) how much (total) to prepare      -> type kg or g
-   3) split into boxes                 -> tap sizes, mix as many as you like
-                                          until "remaining" reaches 0
-   e.g. 3 kg = 1 kg x 2 boxes + 500 gm x 2 boxes
+   2) rows of [box size (kg / g)] x [number of boxes]  — add as many rows as needed
+   e.g. 1 kg x 2 boxes  +  500 gm x 2 boxes
    ===================================================================== */
-type Pack = { size: number; count: number };
+type Row = { id: number; size: number; count: number; unit: WUnit }; // size is always kg; unit = what the user picked
 
 interface ItemPopupProps {
   products: Product[];
@@ -194,90 +205,56 @@ interface ItemPopupProps {
 }
 
 const ItemPopup: React.FC<ItemPopupProps> = ({ products, initial, onSave, onClose }) => {
-  const [step, setStep] = useState<1 | 2 | 3>(initial ? 2 : 1);
+  const nextId = useRef(1);
+  const newRow = (size = 0, count = 1, unit: WUnit = 'kg'): Row => ({ id: nextId.current++, size, count, unit });
+
+  const [step, setStep] = useState<1 | 2>(initial ? 2 : 1);
   const [product, setProduct] = useState<Product | null>(
     initial ? products.find((p) => String(p.id) === initial[0].productId) ?? null : null
   );
-  const [total, setTotal] = useState<number>(
-    initial ? +initial.reduce((s, it) => s + it.quantity, 0).toFixed(3) : 0
+  const [rows, setRows] = useState<Row[]>(() =>
+    initial && initial.length > 0 ? initial.map((it) =>
+          isGramUnit(it.unit) ? newRow(it.packSize / 1000, it.packCount, 'g') : newRow(it.packSize, it.packCount, 'kg')
+        ) : [newRow()]
   );
-  const [packs, setPacks] = useState<Pack[]>(
-    initial ? initial.map((it) => ({ size: it.packSize, count: it.packCount })) : []
-  );
-  const [showOther, setShowOther] = useState(false);
-  const [otherSize, setOtherSize] = useState(0);
   const [search, setSearch] = useState('');
 
   const kg = product ? isKgUnit(product.unit) : false;
   const unit = product?.unit ?? '';
-  const stepSize = kg ? 0.25 : 1;
   const price = Number(product?.sellingPrice) || 0;
 
-  const sizeOptions = kg
-    ? WEIGHT_OPTIONS
-    : COUNT_BOX_OPTIONS.map((n) => ({ label: `${n} ${unit}`, qty: n }));
+  const updateRow = (id: number, patch: Partial<Row>) =>
+    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+  const addRow = () => setRows((prev) => [...prev, newRow()]);
+  const removeRow = (id: number) =>
+    setRows((prev) => (prev.length === 1 ? [newRow()] : prev.filter((r) => r.id !== id)));
 
-  const changeTotal = (n: number) => setTotal(Math.max(0, Math.round(n * 1000) / 1000));
+  const rowValid = (r: Row) =>
+    r.count >= 1 && Number.isInteger(r.count) && (kg ? r.size >= 0.001 : r.size > 0 && Number.isInteger(r.size));
+  const canSave = rows.length > 0 && rows.every(rowValid);
 
-  // kg products: any weight (down to 1 g). Other products: whole numbers.
-  const totalValid = kg ? total >= 0.001 : total > 0 && Number.isInteger(total);
-
-  // How much is already put into boxes / how much is left
-  const allocatedG = packs.reduce((s, p) => s + grams(p.size) * p.count, 0);
-  const remainingG = grams(total) - allocatedG;
-  const remaining = remainingG / 1000;
-  const canSave = packs.length > 0 && remainingG === 0;
-  const amount = Math.round(price * total * 100) / 100;
+  const totalQty = rows.reduce((s, r) => s + r.size * r.count, 0);
+  const amount = Math.round(price * totalQty * 100) / 100;
 
   const chooseProduct = (p: Product) => {
-    // a different product -> start fresh
-    if (product && product.id !== p.id) {
-      setTotal(0);
-      setPacks([]);
-      setShowOther(false);
-      setOtherSize(0);
-    }
+    if (product && product.id !== p.id) setRows([newRow()]); // different product -> start fresh
     setProduct(p);
     setStep(2);
   };
 
-  const goToStep3 = () => {
-    if (!totalValid) return;
-    // If the total was reduced below what is already boxed, start the boxes again
-    if (allocatedG > grams(total)) setPacks([]);
-    setStep(3);
-  };
-
-  // Add one more box of this size
-  const addPack = (size: number) => {
-    if (size <= 0 || grams(size) > remainingG) return;
-    setPacks((prev) =>
-      prev.some((p) => p.size === size)
-        ? prev.map((p) => (p.size === size ? { ...p, count: p.count + 1 } : p))
-        : [...prev, { size, count: 1 }]
-    );
-  };
-
-  const changeCount = (index: number, delta: number) => {
-    setPacks((prev) => {
-      const p = prev[index];
-      if (!p) return prev;
-      if (delta > 0 && grams(p.size) > remainingG) return prev;
-      const count = p.count + delta;
-      return count < 1
-        ? prev.filter((_, i) => i !== index)
-        : prev.map((x, i) => (i === index ? { ...x, count } : x));
-    });
-  };
-
-  const removePack = (index: number) => setPacks((prev) => prev.filter((_, i) => i !== index));
-
   const save = () => {
     if (!product || !canSave) return;
-    onSave(packs.map((p) => makeItem(product, p.size, p.count)));
+    // Merge rows that use the same box size AND the same unit
+    const merged = new Map<string, { g: number; asGrams: boolean; count: number }>();
+    rows.forEach((r) => {
+      const asGrams = kg && r.unit === 'g';
+      const key = `${grams(r.size)}|${asGrams ? 'g' : 'kg'}`;
+      const prev = merged.get(key);
+      merged.set(key, { g: grams(r.size), asGrams, count: (prev?.count || 0) + r.count });
+    });
+    onSave(Array.from(merged.values()).map((m) => makeItem(product, m.g / 1000, m.count, m.asGrams)));
   };
 
-  const quickTotals = kg ? [5, 10, 25, 50] : [10, 50, 100, 200];
   const filtered = products.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()));
 
   return (
@@ -286,13 +263,13 @@ const ItemPopup: React.FC<ItemPopupProps> = ({ products, initial, onSave, onClos
         className="bg-white rounded-2xl w-full max-w-md shadow-2xl border-2 border-[#EDE2E5] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header with step dots */}
+        {/* Header */}
         <div className="px-5 py-4 border-b-2 border-[#EDE2E5] flex items-center justify-between bg-[#FFF9F5]">
           <div className="flex items-center gap-2.5 min-w-0">
-            {step > 1 && (
+            {step === 2 && !initial && (
               <button
                 type="button"
-                onClick={() => setStep((s) => (s - 1) as 1 | 2 | 3)}
+                onClick={() => setStep(1)}
                 className="p-1.5 rounded-lg text-[#756B70] hover:bg-[#FFF0F3] cursor-pointer"
                 aria-label={box.back}
               >
@@ -310,7 +287,7 @@ const ItemPopup: React.FC<ItemPopupProps> = ({ products, initial, onSave, onClos
           </div>
           <div className="flex items-center gap-3">
             <div className="flex gap-1.5">
-              {[1, 2, 3].map((n) => (
+              {[1, 2].map((n) => (
                 <span key={n} className={`w-2 h-2 rounded-full ${n <= step ? 'bg-[#C94F6D]' : 'bg-[#EDE2E5]'}`} />
               ))}
             </div>
@@ -356,224 +333,112 @@ const ItemPopup: React.FC<ItemPopupProps> = ({ products, initial, onSave, onClos
             </>
           )}
 
-          {/* STEP 2 — total quantity to prepare */}
+          {/* STEP 2 — rows: box size + number of boxes */}
           {step === 2 && product && (
             <>
               <div>
-                <h4 className="text-lg font-bold text-[#29252A]">{box.howManyTitle(unit)}</h4>
-                <p className="text-xs text-[#756B70]">{kg ? box.howManyEn : 'How much do we need to prepare in total?'}</p>
+                <h4 className="text-lg font-bold text-[#29252A]">{box.boxDetails}</h4>
+                <p className="text-xs text-[#756B70]">{box.boxDetailsEn}</p>
               </div>
 
-              <div className="flex items-center justify-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => changeTotal(total - stepSize)}
-                  className="w-12 h-12 shrink-0 rounded-xl bg-[#FFF0F3] text-[#C94F6D] hover:bg-[#C94F6D] hover:text-white flex items-center justify-center cursor-pointer transition-colors"
-                >
-                  <Minus className="w-6 h-6" />
-                </button>
+              <div className="space-y-3">
+                {rows.map((r, i) => (
+                  <div key={r.id} className="p-3.5 rounded-xl bg-[#FFF9F5] border-2 border-[#EDE2E5] space-y-3">
+                    <div className="flex items-start gap-3">
+                      {/* Field 1: box size */}
+                      <div className="flex-1 min-w-0">
+                        <label className="text-xs font-bold text-[#756B70] block mb-1.5">{box.boxSize}</label>
+                        {kg ? (
+                          <WeightInput
+                            value={r.size}
+                            unit={r.unit}
+                            onUnitChange={(u) => updateRow(r.id, { unit: u })}
+                            onChange={(v) => updateRow(r.id, { size: v })}
+                          />
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              min={0}
+                              step={1}
+                              value={r.size || ''}
+                              placeholder="0"
+                              onChange={(e) => updateRow(r.id, { size: Math.floor(Number(e.target.value) || 0) })}
+                              className="w-24 px-3 py-2.5 text-center text-lg font-bold text-[#29252A] bg-white border-2 border-[#EDE2E5] rounded-xl focus:border-[#C94F6D] outline-none"
+                            />
+                            <span className="text-sm font-bold text-[#756B70]">{unit}</span>
+                          </div>
+                        )}
+                      </div>
 
-                {kg ? (
-                  <WeightInput big value={total} onChange={changeTotal} />
-                ) : (
-                  <div className="flex items-baseline gap-2">
-                    <input
-                      type="number"
-                      min={0}
-                      step={1}
-                      value={total || ''}
-                      placeholder="0"
-                      onChange={(e) => changeTotal(Math.floor(Number(e.target.value) || 0))}
-                      className="w-28 text-center text-4xl font-extrabold text-[#29252A] bg-white border-b-4 border-[#C94F6D] outline-none py-1"
-                    />
-                    <span className="text-lg font-bold text-[#756B70]">{unit}</span>
+                      <span className="pt-8 text-[#756B70] font-bold">×</span>
+
+                      {/* Field 2: number of boxes */}
+                      <div className="w-24 shrink-0">
+                        <label className="text-xs font-bold text-[#756B70] block mb-1.5">{box.boxCount}</label>
+                        <input
+                          type="number"
+                          min={1}
+                          step={1}
+                          value={r.count || ''}
+                          placeholder="0"
+                          onChange={(e) => updateRow(r.id, { count: Math.floor(Number(e.target.value) || 0) })}
+                          className="w-full px-3 py-2.5 text-center text-lg font-bold text-[#29252A] bg-white border-2 border-[#EDE2E5] rounded-xl focus:border-[#C94F6D] outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-[#756B70]">
+                        {rowValid(r) ? (
+                          <>
+                            = <b className="text-[#29252A]">{formatQty(+(r.size * r.count).toFixed(3), unit)}</b>
+                            {'  •  '}₹{(Math.round(price * r.size * r.count * 100) / 100).toLocaleString()}
+                          </>
+                        ) : (
+                          <span className="text-[#D9535F]">{box.fillRow}</span>
+                        )}
+                      </span>
+                      {(rows.length > 1 || r.size > 0) && (
+                        <button
+                          type="button"
+                          onClick={() => removeRow(r.id)}
+                          aria-label={`Remove row ${i + 1}`}
+                          className="p-1.5 rounded-lg text-[#756B70] hover:text-[#D9535F] hover:bg-white cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                   </div>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => changeTotal(total + stepSize)}
-                  className="w-12 h-12 shrink-0 rounded-xl bg-[#FFF0F3] text-[#C94F6D] hover:bg-[#C94F6D] hover:text-white flex items-center justify-center cursor-pointer transition-colors"
-                >
-                  <Plus className="w-6 h-6" />
-                </button>
-              </div>
-
-              <div className="flex items-center justify-center gap-2 flex-wrap">
-                {quickTotals.map((q) => (
-                  <button
-                    key={q}
-                    type="button"
-                    onClick={() => changeTotal(q)}
-                    className={`px-4 py-2 rounded-lg border-2 text-sm font-bold cursor-pointer transition-colors ${
-                      total === q
-                        ? 'bg-[#C94F6D] border-[#C94F6D] text-white'
-                        : 'bg-white border-[#EDE2E5] text-[#29252A] hover:bg-[#FFF0F3]'
-                    }`}
-                  >
-                    {q} {unit}
-                  </button>
                 ))}
               </div>
 
-              {total > 0 && (
-                <p className="text-center text-sm font-semibold text-[#756B70]">
-                  = <span className="text-[#29252A]">{formatQty(total, unit)}</span>
-                </p>
-              )}
-
+              {/* Add another row */}
               <button
                 type="button"
-                disabled={!totalValid}
-                onClick={goToStep3}
-                className="w-full py-3.5 rounded-xl bg-[#C94F6D] hover:bg-[#A83D58] text-white font-bold text-base cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={addRow}
+                className="w-full py-3 rounded-xl border-2 border-dashed border-[#C94F6D]/50 text-[#C94F6D] font-bold text-sm flex items-center justify-center gap-1.5 hover:bg-[#FFF0F3] cursor-pointer transition-colors"
               >
-                {box.next}
+                <Plus className="w-4 h-4" />
+                <span>{box.addRow}</span>
               </button>
-            </>
-          )}
-
-          {/* STEP 3 — MULTIPLE box sizes */}
-          {step === 3 && product && (
-            <>
-              <div>
-                <h4 className="text-lg font-bold text-[#29252A]">{box.perBoxTitle(unit)}</h4>
-                <p className="text-xs text-[#756B70]">{box.tapSizes}</p>
-              </div>
-
-              {/* Remaining banner */}
-              <div
-                className={`flex items-center justify-between px-4 py-3 rounded-xl border-2 font-bold ${
-                  remainingG === 0
-                    ? 'bg-[#E8F6EE] border-[#3FA56B]/40 text-[#3FA56B]'
-                    : 'bg-[#FFF0F3] border-[#C94F6D]/30 text-[#C94F6D]'
-                }`}
-              >
-                <span>{box.remaining}</span>
-                <span className="text-lg">{formatQty(remaining, unit)}</span>
-              </div>
-
-              {/* Size chips: tap to add one more box of that size */}
-              <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
-                {sizeOptions.map((opt) => {
-                  const fits = grams(opt.qty) <= remainingG;
-                  return (
-                    <button
-                      key={opt.qty}
-                      type="button"
-                      disabled={!fits}
-                      onClick={() => addPack(opt.qty)}
-                      className={`py-4 rounded-xl border-2 flex flex-col items-center gap-0.5 transition-colors ${
-                        fits
-                          ? 'bg-[#FFF9F5] border-[#EDE2E5] text-[#29252A] hover:border-[#C94F6D] hover:bg-[#FFF0F3] cursor-pointer'
-                          : 'bg-[#EDE2E5]/40 border-[#EDE2E5] text-[#756B70] opacity-50 cursor-not-allowed'
-                      }`}
-                    >
-                      <span className="font-extrabold text-base">{opt.label}</span>
-                      <span className="text-xs font-semibold text-[#C94F6D]">
-                        ₹{(Math.round(price * opt.qty * 100) / 100).toLocaleString()}
-                      </span>
-                    </button>
-                  );
-                })}
-
-                {/* "Other" — typeable box size (kg products only) */}
-                {kg && (
-                  <button
-                    type="button"
-                    onClick={() => setShowOther((v) => !v)}
-                    className={`py-4 rounded-xl border-2 flex flex-col items-center gap-0.5 transition-colors cursor-pointer ${
-                      showOther
-                        ? 'bg-[#C94F6D] border-[#C94F6D] text-white'
-                        : 'bg-[#FFF9F5] border-dashed border-[#C94F6D]/50 text-[#29252A] hover:border-[#C94F6D] hover:bg-[#FFF0F3]'
-                    }`}
-                  >
-                    <span className="font-extrabold text-base">{box.other}</span>
-                    <span className={`text-xs font-semibold ${showOther ? 'text-white/90' : 'text-[#C94F6D]'}`}>
-                      {box.otherEn}
-                    </span>
-                  </button>
-                )}
-              </div>
-
-              {/* Typed custom size in kg or g */}
-              {kg && showOther && (
-                <div className="p-4 rounded-xl bg-[#FFF9F5] border-2 border-[#EDE2E5] space-y-3">
-                  <p className="text-xs font-semibold text-[#756B70]">{box.typeBoxSize}</p>
-                  <div className="flex items-center justify-center gap-3 flex-wrap">
-                    <WeightInput value={otherSize} onChange={setOtherSize} />
-                    <button
-                      type="button"
-                      disabled={otherSize <= 0 || grams(otherSize) > remainingG}
-                      onClick={() => {
-                        addPack(otherSize);
-                        setOtherSize(0);
-                      }}
-                      className="px-4 py-2.5 rounded-lg bg-[#C94F6D] hover:bg-[#A83D58] text-white font-bold text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {box.addBox}
-                    </button>
-                  </div>
-                  {otherSize > 0 && grams(otherSize) > remainingG && (
-                    <p className="text-xs font-semibold text-[#D9535F] text-center">{box.tooBig}</p>
-                  )}
-                </div>
-              )}
-
-              {/* Boxes chosen so far */}
-              {packs.length > 0 && (
-                <div className="space-y-2">
-                  {packs.map((p, i) => (
-                    <div
-                      key={p.size}
-                      className="flex items-center gap-3 px-3.5 py-3 rounded-xl bg-[#FFF9F5] border-2 border-[#EDE2E5]"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold text-sm text-[#29252A]">{formatQty(p.size, unit)}</p>
-                        <p className="text-xs text-[#756B70]">= {formatQty(+(p.size * p.count).toFixed(3), unit)}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => changeCount(i, -1)}
-                          className="w-8 h-8 rounded-lg bg-[#FFF0F3] text-[#C94F6D] flex items-center justify-center cursor-pointer"
-                        >
-                          <Minus className="w-4 h-4" />
-                        </button>
-                        <span className="w-14 text-center font-extrabold text-[#29252A]">
-                          {p.count} {box.boxes}
-                        </span>
-                        <button
-                          type="button"
-                          disabled={grams(p.size) > remainingG}
-                          onClick={() => changeCount(i, 1)}
-                          className="w-8 h-8 rounded-lg bg-[#FFF0F3] text-[#C94F6D] flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                        >
-                          <Plus className="w-4 h-4" />
-                        </button>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removePack(i)}
-                        className="p-1.5 rounded-lg text-[#756B70] hover:text-[#D9535F] cursor-pointer"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
 
               {/* Live summary */}
               <div className="p-4 rounded-xl bg-[#FFF0F3] border-2 border-[#C94F6D]/20 space-y-1.5 text-sm text-[#29252A]">
                 <div className="flex justify-between">
                   <span className="text-[#756B70]">{box.total}</span>
-                  <b>{formatQty(total, unit)}</b>
+                  <b>{formatQty(+totalQty.toFixed(3), unit)}</b>
                 </div>
                 <div className="flex justify-between gap-3">
                   <span className="text-[#756B70]">{box.boxes}</span>
                   <b className="text-right">
-                    {packs.length > 0 ? packs.map((p) => `${p.count} × ${formatQty(p.size, unit)}`).join(' + ') : '—'}
+                    {rows.filter(rowValid).length > 0
+                      ? rows
+                          .filter(rowValid)
+                          .map((r) => `${r.count} × ${formatQty(r.size, unit)}`)
+                          .join(' + ')
+                      : '—'}
                   </b>
                 </div>
                 <div className="flex justify-between pt-1.5 border-t-2 border-[#C94F6D]/20 text-base font-extrabold text-[#C94F6D]">
@@ -581,10 +446,6 @@ const ItemPopup: React.FC<ItemPopupProps> = ({ products, initial, onSave, onClos
                   <span>{amount.toLocaleString()}</span>
                 </div>
               </div>
-
-              {!canSave && packs.length > 0 && (
-                <p className="text-xs font-semibold text-[#D9535F] text-center">{box.mustFill}</p>
-              )}
 
               <button
                 type="button"
@@ -902,7 +763,7 @@ export const BulkOrderFormModal: React.FC<BulkOrderFormModalProps> = ({ isOpen, 
                 {orderItems.length > 0 && (
                   <div className="space-y-2.5">
                     {Object.entries(groupedItems).map(([productId, lines]) => {
-                      const qty = +lines.reduce((s, l) => s + l.quantity, 0).toFixed(3);
+                      const qty = +lines.reduce((s, l) => s + itemKg(l), 0).toFixed(3);
                       const sum = lines.reduce((s, l) => s + l.total, 0);
                       return (
                         <div
@@ -912,7 +773,7 @@ export const BulkOrderFormModal: React.FC<BulkOrderFormModalProps> = ({ isOpen, 
                           <div className="min-w-0 flex-1">
                             <p className="font-bold text-sm text-[#29252A] truncate">{lines[0].productName}</p>
                             <p className="text-xs text-[#756B70] mt-0.5">
-                              {box.total}: <b className="text-[#29252A]">{formatQty(qty, lines[0].unit)}</b>
+                              {box.total}: <b className="text-[#29252A]">{formatQty(qty, 'kg')}</b>
                               {'  •  '}
                               {lines.map((l) => `${l.packCount} × ${formatQty(l.packSize, l.unit)}`).join(' + ')}
                             </p>
