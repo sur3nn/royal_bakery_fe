@@ -308,17 +308,13 @@ export const BulkOrdersView: React.FC<BulkOrdersViewProps> = ({
                     <div className="flex flex-col gap-1.5">
                       {/* Kitchen: eye = view slip, button = download PDF */}
                       <div className="flex items-center gap-1.5">
+                        
                         <button
                           onClick={() => setViewInvoice(toKotInvoice(o, 'kitchen'))}
-                          className="p-1.5 rounded-lg text-[#756B70] hover:text-[#8A6414] hover:bg-[#FFF3D6] cursor-pointer"
-                          title="View kitchen slip"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() =>
-                            downloadPdf(`/api/bulk-orders/${o.id}/kot/kitchen`, `kitchen-kot-${o.number}.pdf`)
-                          }
+
+                          // onClick={() =>
+                            // downloadPdf(`/api/bulk-orders/${o.id}/kot/kitchen`, `kitchen-kot-${o.number}.pdf`)
+                          // }
                           className="flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#FFF3D6] text-[#8A6414] text-xs font-bold cursor-pointer"
                         >
                           <FileDown className="w-3.5 h-3.5" /> Kitchen
@@ -327,17 +323,13 @@ export const BulkOrdersView: React.FC<BulkOrdersViewProps> = ({
 
                       {/* Packing: eye = view slip, button = download PDF */}
                       <div className="flex items-center gap-1.5">
+                       
                         <button
                           onClick={() => setViewInvoice(toKotInvoice(o, 'packing'))}
-                          className="p-1.5 rounded-lg text-[#756B70] hover:text-[#2F5F96] hover:bg-[#EBF3FB] cursor-pointer"
-                          title="View packing slip"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() =>
-                            downloadPdf(`/api/bulk-orders/${o.id}/kot/packing`, `packing-kot-${o.number}.pdf`)
-                          }
+
+                          // onClick={() =>
+                          //   downloadPdf(`/api/bulk-orders/${o.id}/kot/packing`, `packing-kot-${o.number}.pdf`)
+                          // }
                           className="flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#EBF3FB] text-[#2F5F96] text-xs font-bold cursor-pointer"
                         >
                           <FileDown className="w-3.5 h-3.5" /> Packing
@@ -346,17 +338,13 @@ export const BulkOrdersView: React.FC<BulkOrdersViewProps> = ({
 
                       {/* Bill: eye = open bill view, button = download PDF */}
                       <div className="flex items-center gap-1.5">
+                       
                         <button
                           onClick={() => setViewInvoice(toInvoice(o.raw))}
-                          className="p-1.5 rounded-lg text-[#756B70] hover:text-[#C94F6D] hover:bg-[#FFF0F3] cursor-pointer"
-                          title="View bill"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() =>
-                            downloadPdf(`/api/bulk-orders/${o.id}/bill`, `bill-${o.number}.pdf`)
-                          }
+
+                          // onClick={() =>
+                          //   downloadPdf(`/api/bulk-orders/${o.id}/bill`, `bill-${o.number}.pdf`)
+                          // }
                           className="flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#FFF0F3] text-[#C94F6D] text-xs font-bold cursor-pointer"
                         >
                           <FileDown className="w-3.5 h-3.5" /> Bill
