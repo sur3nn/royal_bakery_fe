@@ -1,11 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, Plus, FileDown, Eye } from 'lucide-react';
+import { Search, Plus, FileDown } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../redux/store';
 import { FetchBulkOrdersAction, FetchBulkOrderStatusesAction } from '../redux/actions/bakeryActions';
 import { BulkOrder, BulkOrderStatus, Invoice } from '../types';
 import { formatDate, formatTime } from '../utils/date_format';
-import { downloadPdf } from '../utils/pdf';
 import KitchenKotButton from './Kitchenkotbutton';
 import { InvoiceModal } from './InvoiceModal'; // adjust the path if your modal lives elsewhere
 
@@ -37,27 +36,37 @@ const simplify = (o: any) => ({
 
 type SimpleOrder = ReturnType<typeof simplify>;
 
-/* ---------- Tamil quantity formatting ---------- */
+/* ---------- Unit helpers ---------- */
 
 const isKg = (unit?: string) =>
   ['kg', 'kgs', 'kilogram', 'kilograms'].includes(String(unit || '').trim().toLowerCase());
 
+const isGram = (unit?: string) =>
+  ['g', 'gm', 'gms', 'gram', 'grams'].includes(String(unit || '').trim().toLowerCase());
+
+// Grams -> kg (100 g -> 0.1). Any other unit is returned unchanged.
+const inKg = (qty: number, unit?: string) => (isGram(unit) ? +(qty / 1000).toFixed(3) : qty);
+
 const unitTa = (unit?: string) => {
   const u = String(unit || '').trim().toLowerCase();
   if (isKg(unit)) return 'கிலோ';
-  if (['gm', 'g', 'gram', 'grams'].includes(u)) return 'கிராம்';
+  if (isGram(unit)) return 'கிராம்';
   if (['l', 'ltr', 'litre', 'liter', 'litres', 'liters'].includes(u)) return 'லிட்டர்';
   if (['pcs', 'pc', 'piece', 'pieces', 'nos'].includes(u)) return 'எண்';
   return unit || '';
 };
 
-// 0.25 -> "250 கிராம்", 1.5 -> "1.5 கிலோ"; other units translated
+// 0.25 -> "250 கிராம்", 1.5 -> "1.5 கிலோ"; grams stay grams; other units translated
 const fmtTa = (qty: number, unit?: string) => {
   if (!isKg(unit)) return `${+qty.toFixed(3)} ${unitTa(unit)}`.trim();
   return qty < 1 ? `${Math.round(qty * 1000)} கிராம்` : `${+qty.toFixed(3)} கிலோ`;
 };
 
+// Always in kilos: 0.1 -> "0.1 கிலோ"
+const fmtKgTa = (qty: number) => `${+qty.toFixed(3)} கிலோ`;
+
 // Bulk order -> same shape the InvoiceModal already understands
+// Lines saved in grams are converted to kg here, so the bill always shows Kg.
 const toInvoice = (o: any): Invoice => {
   const total = Number(o.totalAmount ?? o.total_amount ?? 0);
   const advance = Number(o.advancePaid ?? o.advance_paid ?? 0);
@@ -66,7 +75,7 @@ const toInvoice = (o: any): Invoice => {
   const deliveryTime = o.deliveryTime ?? o.delivery_time;
 
   return {
-    id:o.id ,
+    id: o.id,
     invoiceNumber: o.orderNumber ?? o.order_number ?? '',
     dateOnly: formatDate(delivery),
     timeOnly: formatTime(deliveryTime),
@@ -82,20 +91,25 @@ const toInvoice = (o: any): Invoice => {
     grandTotal: total,
     amountPaid: advance,
     balanceReturn: 0,
- // Cash / UPI only (the advance amount is shown separately)
-paymentMethod: (() => {
-  const m = String(o.paymentMethod ?? o.payment_method ?? '').trim().toLowerCase();
-  if (!m) return '';
-  return m.includes('upi') ? 'UPI' : 'Cash';
-})(),
-    items: (o.products || []).map((i: any) => ({
-      productName: i.productName ?? i.product_name,
-      category: '',
-      unit: i.unit,
-      quantity: Number(i.quantity) || 0,
-      price: Number(i.price ?? i.rate) || 0,
-      total: Number(i.total ?? i.amount) || 0,
-    })),
+    // Cash / UPI only (the advance amount is shown separately)
+    paymentMethod: (() => {
+      const m = String(o.paymentMethod ?? o.payment_method ?? '').trim().toLowerCase();
+      if (!m) return '';
+      return m.includes('upi') ? 'UPI' : 'Cash';
+    })(),
+    items: (o.products || []).map((i: any) => {
+      const gram = isGram(i.unit);
+      const qty = Number(i.quantity) || 0;
+      const price = Number(i.price ?? i.rate) || 0;
+      return {
+        productName: i.productName ?? i.product_name,
+        category: '',
+        unit: gram ? 'Kg' : i.unit,
+        quantity: inKg(qty, i.unit), // 100 g -> 0.1 Kg
+        price: gram ? Math.round(price * 1000 * 100) / 100 : price, // price per g -> price per Kg
+        total: Number(i.total ?? i.amount) || 0, // amount does not change
+      };
+    }),
     // extra fields used by the modal for bulk orders
     isBulk: true,
     occasion: o.occasion ?? '',
@@ -107,19 +121,27 @@ paymentMethod: (() => {
 };
 
 // Kitchen / Packing slip -> same Invoice shape, so the same modal opens (thermal only, in Tamil)
+// Kitchen slip: weights are shown in kg (g lines are converted).
+// Packing slip: box sizes stay as they were entered (g stays g).
 const toKotInvoice = (o: SimpleOrder, kind: 'kitchen' | 'packing'): Invoice => {
   const base: any = toInvoice(o.raw);
 
-  // group lines by product (one product can have several box sizes)
+  // group lines by product (one product can have several box sizes, in kg and/or g)
   const groups: { name: string; unit: string; total: number; packs: string[] }[] = [];
   o.items.forEach((it: any) => {
-    let g = groups.find((x) => x.name === it.name && x.unit === it.unit);
+    const unit = isGram(it.unit) ? 'Kg' : it.unit; // g and kg lines of a product go together
+    let g = groups.find((x) => x.name === it.name && x.unit === unit);
     if (!g) {
-      g = { name: it.name, unit: it.unit, total: 0, packs: [] };
+      g = { name: it.name, unit, total: 0, packs: [] };
       groups.push(g);
     }
-    g.total += it.total;
-    g.packs.push(`${fmtTa(it.size, it.unit)} x ${it.boxes} பெட்டி`);
+    g.total += inKg(it.total, it.unit);
+
+    const packText =
+      kind === 'kitchen' && (isKg(it.unit) || isGram(it.unit))
+        ? fmtKgTa(inKg(it.size, it.unit))
+        : fmtTa(it.size, it.unit);
+    g.packs.push(`${packText} x ${it.boxes} பெட்டி`);
   });
 
   return {
@@ -129,8 +151,8 @@ const toKotInvoice = (o: SimpleOrder, kind: 'kitchen' | 'packing'): Invoice => {
     kotTitle: kind === 'kitchen' ? 'சமையலறை சீட்டு' : 'பேக்கிங் சீட்டு',
     kotLines: groups.map((g) => ({
       name: g.name,
-      // kitchen: total to make | packing: each box size x boxes
-      total: fmtTa(g.total, g.unit),
+      // kitchen: total to make (kg) | packing: each box size x boxes
+      total: kind === 'kitchen' && isKg(g.unit) ? fmtKgTa(g.total) : fmtTa(g.total, g.unit),
       packs: g.packs,
     })),
   } as any;
@@ -306,45 +328,30 @@ export const BulkOrdersView: React.FC<BulkOrdersViewProps> = ({
 
                   <td className="py-3.5 px-4">
                     <div className="flex flex-col gap-1.5">
-                      {/* Kitchen: eye = view slip, button = download PDF */}
+                      {/* Kitchen slip */}
                       <div className="flex items-center gap-1.5">
-                        
                         <button
                           onClick={() => setViewInvoice(toKotInvoice(o, 'kitchen'))}
-
-                          // onClick={() =>
-                            // downloadPdf(`/api/bulk-orders/${o.id}/kot/kitchen`, `kitchen-kot-${o.number}.pdf`)
-                          // }
                           className="flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#FFF3D6] text-[#8A6414] text-xs font-bold cursor-pointer"
                         >
                           <FileDown className="w-3.5 h-3.5" /> Kitchen
                         </button>
                       </div>
 
-                      {/* Packing: eye = view slip, button = download PDF */}
+                      {/* Packing slip */}
                       <div className="flex items-center gap-1.5">
-                       
                         <button
                           onClick={() => setViewInvoice(toKotInvoice(o, 'packing'))}
-
-                          // onClick={() =>
-                          //   downloadPdf(`/api/bulk-orders/${o.id}/kot/packing`, `packing-kot-${o.number}.pdf`)
-                          // }
                           className="flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#EBF3FB] text-[#2F5F96] text-xs font-bold cursor-pointer"
                         >
                           <FileDown className="w-3.5 h-3.5" /> Packing
                         </button>
                       </div>
 
-                      {/* Bill: eye = open bill view, button = download PDF */}
+                      {/* Bill */}
                       <div className="flex items-center gap-1.5">
-                       
                         <button
                           onClick={() => setViewInvoice(toInvoice(o.raw))}
-
-                          // onClick={() =>
-                          //   downloadPdf(`/api/bulk-orders/${o.id}/bill`, `bill-${o.number}.pdf`)
-                          // }
                           className="flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#FFF0F3] text-[#C94F6D] text-xs font-bold cursor-pointer"
                         >
                           <FileDown className="w-3.5 h-3.5" /> Bill

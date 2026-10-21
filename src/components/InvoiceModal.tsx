@@ -135,6 +135,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
   .thermal-receipt, .thermal-receipt * {
     color: #000 !important;
     font-size: 14px !important;
+    line-height: 1.45 !important; /* Tamil marks need room above and below the line */
     border-color: #000 !important;
     box-sizing: border-box;
   }
@@ -270,14 +271,14 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
 
                 {/* Items */}
                 <div className="py-3 border-b border-dashed border-black space-y-3">
-                  <div className="flex justify-between font-bold pb-1 border-b border-black">
+                  <div className="flex justify-between gap-2 font-bold pb-1 border-b border-black">
                     <span>பொருள்</span>
-                    <span>{isKitchen ? 'செய்ய வேண்டிய மொத்தம்' : 'பேக்கிங்'}</span>
+                    <span className="text-right">{isKitchen ? 'செய்ய வேண்டிய மொத்தம்' : 'பேக்கிங்'}</span>
                   </div>
 
                   {(k.kotLines || []).map((l: any, i: number) => (
                     <div key={i}>
-                      <p className="font-bold leading-tight break-words">{l.name}</p>
+                      <p className="font-bold leading-snug break-words">{l.name}</p>
 
                       {isKitchen ? (
                         <div className="flex justify-between pl-2">
@@ -341,40 +342,27 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
 
                 {/* Items List */}
                 <div className="py-3 border-b border-dashed border-black">
-                  {/* Header */}
-                  <div className="grid grid-cols-[minmax(0,1fr)_17mm_15mm_17mm] font-bold text-[14px] pb-1 border-b border-black">
-                    <span>பொருள்</span>
+                  {/* Header: item label on its own line, then qty / rate / amount */}
+                  <div className="grid grid-cols-[minmax(0,1fr)_18mm_18mm] gap-x-1 font-bold pb-1 border-b border-black">
+                    <span className="col-span-3">பொருள்</span>
                     <span className="text-left">அளவு</span>
-                    <span className="text-right pr-2">விலை</span>
-                    <span className="text-right pr-1">தொகை</span>
+                    <span className="text-right">விலை</span>
+                    <span className="text-right">தொகை</span>
                   </div>
 
-                  {/* Rows */}
-                  <div className="space-y-1.5 pt-1">
+                  {/* Rows: product name (wraps normally), then qty / rate / amount below it */}
+                  <div className="space-y-2 pt-1.5">
                     {invoice.items.map((it, idx) => (
                       <div key={idx}>
-                        {/* Product name: each word on its own line, tight line height */}
-                        <div className="font-bold text-black leading-[1.05]">
-                          {String(it.productName)
-                            .trim()
-                            .split(/\s+/)
-                            .map((w, i) => (
-                              <span key={i} className="block break-words">
-                                {w}
-                              </span>
-                            ))}
-                        </div>
-
-                        {/* Qty / rate / amount: pulled up under the name */}
-                        <div className="grid grid-cols-[minmax(0,1fr)_17mm_15mm_17mm] text-[14px] leading-none -mt-3">
-                          <span />
-                          <span className="text-left whitespace-nowrap tabular-nums">
+                        <p className="font-bold text-black break-words">{it.productName}</p>
+                        <div className="grid grid-cols-[minmax(0,1fr)_18mm_18mm] gap-x-1 tabular-nums">
+                          <span className="text-left whitespace-nowrap">
                             {it.quantity} {it.unit}
                           </span>
-                          <span className="text-right pr-2 whitespace-nowrap tabular-nums">
+                          <span className="text-right whitespace-nowrap">
                             ₹{it.price.toLocaleString()}
                           </span>
-                          <span className="text-right pr-1 font-bold whitespace-nowrap tabular-nums">
+                          <span className="text-right font-bold whitespace-nowrap">
                             ₹{it.total.toLocaleString()}
                           </span>
                         </div>
