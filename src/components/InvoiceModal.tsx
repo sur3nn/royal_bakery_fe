@@ -48,8 +48,27 @@ const getDateText = (value?: string | null) => {
   return p ? `${p.d}/${p.mo}/${p.y.slice(-2)}` : s;
 };
 
-const to12h = (h: number, min: number) =>
-  `${h % 12 || 12}:${pad(min)} ${h >= 12 ? 'pm' : 'am'}`; // 8:11 am
+const to12h = (h: number, min: number, padHour = false) =>
+  `${padHour ? pad(h % 12 || 12) : h % 12 || 12}:${pad(min)} ${h >= 12 ? 'pm' : 'am'}`; // 8:11 am (06:45 pm with padHour)
+
+// -> 26/10/26 06:45 pm (IST). Date-only values stay date-only.
+const getDateTimeText = (value?: string | null, timeValue?: string | null) => {
+  if (!value) return '';
+  const s = String(value).trim();
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    const date = getDateText(s);
+    const t = String(timeValue ?? '').match(/^(\d{1,2}):(\d{2})/);
+    return t ? `${date} ${to12h(Number(t[1]), Number(t[2]), true)}` : date;
+  }
+
+  const p = toIstParts(s);
+  if (!p) return s;
+  const date = `${p.d}/${p.mo}/${p.y.slice(-2)}`;
+  // 12:00 am usually means a date column with no real time, so show the date only
+  if (p.h === 0 && p.mi === 0) return date;
+  return `${date} ${to12h(p.h, p.mi, true)}`;
+};
 
 // -> 8:11 am (IST)
 const getTimeText = (createdAt?: string | null, timeOnly?: string | null) => {
@@ -93,9 +112,9 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
   // Slips are always thermal
   const isThermal = isKot || printMode === 'thermal';
 
-  // Bulk order bill uses a wider roll: 80mm + 15mm = 95mm (print area is 2mm narrower)
+  // Bulk order bill uses a wider roll: 80mm + 25mm = 105mm (print area is 2mm narrower)
   const isBulkBill = !!k.isBulk && !isKot;
-  const paperMm = isBulkBill ? 95 : 80;
+  const paperMm = isBulkBill ? 105 : 80;
   const bodyMm = paperMm - 2;
 
   // Separate date and time
@@ -103,7 +122,8 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
   const timeText = getTimeText(invoice.createdAt, invoice.timeOnly);
 
   // Delivery date for bulk bills: prefer the ready-made text, else format the raw date
-  const deliveryText = k.deliveryText || getDateText(k.deliveryDate ?? k.deliveryDateTime);
+  const deliveryText =
+    getDateTimeText(k.deliveryDate ?? k.deliveryDateTime, k.deliveryTime) || k.deliveryText || '';
 
   // Roll width is set by paperMm / bodyMm above.
   const printStyles = `
@@ -354,7 +374,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
               </div>
             ) : (
               /* ================= THERMAL 80mm RECEIPT LAYOUT ================= */
-              <div className={`print-area thermal-receipt ${isBulkBill ? 'max-w-[475px]' : 'max-w-[400px]'} mx-auto bg-white p-5 border border-[#EDE2E5] shadow-sm rounded-xl font-mono text-[14px] text-black`}>
+              <div className={`print-area thermal-receipt ${isBulkBill ? 'max-w-[525px]' : 'max-w-[400px]'} mx-auto bg-white p-5 border border-[#EDE2E5] shadow-sm rounded-xl font-mono text-[14px] text-black`}>
                 {/* Brand Header */}
                 <div className="text-center space-y-1 pb-3 border-b border-dashed border-black">
                   <div className="flex items-center justify-center mx-auto mb-1">
@@ -380,11 +400,11 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                   <>
                     {/* Bill info: bill no / order date, name / delivery date */}
                     <div className="py-2.5 space-y-1 border-b border-dashed border-black text-[14px]">
-                      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-2">
+                      <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-x-2">
                         <p className="break-words">பில் எண்: {getBillNo(invoice)}</p>
                         <p className="break-words">ஆர்டர் தேதி: {dateText}</p>
                       </div>
-                      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-2">
+                      <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-x-2">
                         <p className="break-words">பெயர்: {invoice.customerName}</p>
                         <p className="break-words">டெலிவரி தேதி: {deliveryText}</p>
                       </div>
