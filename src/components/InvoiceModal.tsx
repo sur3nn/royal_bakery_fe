@@ -461,7 +461,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                       <table className="w-full table-fixed border-collapse text-left">
                         <colgroup>
                           <col style={{ width: '9mm' }} />
-                          <col />
+                          <col style={{ width: '17mm' }} />
                           <col style={{ width: '17mm' }} />
                           <col style={{ width: '15mm' }} />
                           <col style={{ width: '17mm' }} />
