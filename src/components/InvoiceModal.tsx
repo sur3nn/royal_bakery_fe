@@ -392,26 +392,26 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
 
                     {/* Items: no | porul | alavu | vilai | thogai */}
                     <div className="py-3 border-b border-dashed border-black">
-                      <div className="grid grid-cols-[6mm_minmax(0,1fr)_16mm_14mm_17mm] gap-x-1 font-bold pb-2 border-b border-black">
+                      <div className="grid grid-cols-[9mm_minmax(0,1fr)_16mm_13mm_16mm] gap-x-1.5 font-bold pb-2 border-b border-black">
                         <span className="text-left whitespace-nowrap">எண்</span>
                         <span className="text-left whitespace-nowrap">பொருள்</span>
                         <span className="text-left whitespace-nowrap">அளவு</span>
-                        <span className="text-right whitespace-nowrap">விலை</span>
-                        <span className="text-right whitespace-nowrap">தொகை</span>
+                        <span className="text-left whitespace-nowrap">விலை</span>
+                        <span className="text-left whitespace-nowrap">தொகை</span>
                       </div>
 
                       <div className="space-y-3 pt-2.5">
                         {invoice.items.map((it, idx) => (
-                          <div key={idx} className="grid grid-cols-[6mm_minmax(0,1fr)_16mm_14mm_17mm] gap-x-1 items-start tabular-nums">
+                          <div key={idx} className="grid grid-cols-[9mm_minmax(0,1fr)_16mm_13mm_16mm] gap-x-1.5 items-start tabular-nums">
                             <span className="text-left">{idx + 1}</span>
-                            <p className="font-bold text-black whitespace-normal break-words">{it.productName}</p>
+                            <p className="font-bold text-black whitespace-normal break-words min-w-0">{it.productName}</p>
                             <span className="text-left whitespace-nowrap">
                               {it.quantity} {it.unit}
                             </span>
-                            <span className="text-right whitespace-nowrap">
+                            <span className="text-left whitespace-nowrap">
                               {it.price.toLocaleString()}
                             </span>
-                            <span className="text-right font-bold whitespace-nowrap">
+                            <span className="text-left font-bold whitespace-nowrap">
                               {it.total.toLocaleString()}
                             </span>
                           </div>
