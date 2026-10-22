@@ -4,7 +4,7 @@ import { ChefHat, Package, X, ChevronLeft, ChevronRight, Loader2, Eye } from 'lu
 import { InvoiceModal } from './InvoiceModal';
 
 // Same API base you use for the other KOT downloads
- //const API = "http://localhost:5000" 
+//const API = "http://localhost:5000" 
 const API = 'https://indigo-kangaroo-864288.hostingersite.com';
 
 type KotKind = 'kitchen' | 'packing';
@@ -65,9 +65,12 @@ const unitTa = (unit?: string) => {
   return unit || '';
 };
 
-const fmtTa = (qty: number, unit?: string) => {
+const fmtTa = (qty: number, unit?: string, keepKg = false) => {
   if (!isKg(unit)) return `${+qty.toFixed(3)} ${unitTa(unit)}`.trim();
-  return qty < 1 ? `${Math.round(qty * 1000)} கிராம்` : `${+qty.toFixed(3)} கிலோ`;
+  // keepKg = always show கிலோ (0.25 கிலோ), otherwise < 1 kg becomes கிராம்
+  return keepKg || qty >= 1
+    ? `${+qty.toFixed(3)} கிலோ`
+    : `${Math.round(qty * 1000)} கிராம்`;
 };
 
 // ---------- Date helpers (local time, no UTC shift) ----------
@@ -212,13 +215,13 @@ export const KitchenKotButton: React.FC<KitchenKotButtonProps> = ({ kind = 'kitc
         kotTitle: L.slipTitle,
         kotLines: rows.map((r: any) => ({
           name: r.productName,
-          // kitchen: total to make | packing: each box size x boxes
-          total: fmtTa(Number(r.totalQuantity), r.unit),
+          // kitchen: always kg | packing: unchanged
+          total: fmtTa(Number(r.totalQuantity), r.unit, kind === 'kitchen'),
           packs:
             kind === 'packing'
               ? (r.packs || []).map(
-                  (p: any) => `${fmtTa(Number(p.packSize), r.unit)} x ${p.packCount} பெட்டி`
-                )
+                (p: any) => `${fmtTa(Number(p.packSize), r.unit)} x ${p.packCount} பெட்டி`
+              )
               : [],
         })),
       });
@@ -269,9 +272,8 @@ export const KitchenKotButton: React.FC<KitchenKotButtonProps> = ({ kind = 'kitc
             ].map((c, i) => (
               <div
                 key={i}
-                className={`px-4 py-3 rounded-xl border-2 transition-colors ${
-                  c.active ? 'border-[#C94F6D] bg-[#FFF0F3]' : 'border-[#EDE2E5] bg-[#FFF9F5]'
-                }`}
+                className={`px-4 py-3 rounded-xl border-2 transition-colors ${c.active ? 'border-[#C94F6D] bg-[#FFF0F3]' : 'border-[#EDE2E5] bg-[#FFF9F5]'
+                  }`}
               >
                 <p className="text-[11px] font-bold text-[#756B70]">{c.label}</p>
                 <p className="text-base font-extrabold text-[#29252A] mt-0.5">{showDate(c.value)}</p>
@@ -336,13 +338,12 @@ export const KitchenKotButton: React.FC<KitchenKotButtonProps> = ({ kind = 'kitc
                     type="button"
                     onClick={() => handleDayClick(iso)}
                     onMouseEnter={() => start && !end && setHover(iso)}
-                    className={`h-10 text-sm font-semibold cursor-pointer transition-colors ${
-                      isStart || isEnd
-                        ? 'bg-[#C94F6D] text-white rounded-lg'
-                        : inRange
+                    className={`h-10 text-sm font-semibold cursor-pointer transition-colors ${isStart || isEnd
+                      ? 'bg-[#C94F6D] text-white rounded-lg'
+                      : inRange
                         ? 'bg-[#FFF0F3] text-[#C94F6D]'
                         : 'text-[#29252A] hover:bg-[#FFF0F3] rounded-lg'
-                    } ${isToday && !isStart && !isEnd ? 'ring-2 ring-[#C94F6D]/40 rounded-lg' : ''}`}
+                      } ${isToday && !isStart && !isEnd ? 'ring-2 ring-[#C94F6D]/40 rounded-lg' : ''}`}
                   >
                     {Number(iso.slice(8))}
                   </button>
@@ -413,11 +414,10 @@ export const KitchenKotButton: React.FC<KitchenKotButtonProps> = ({ kind = 'kitc
       <button
         type="button"
         onClick={openPopup}
-        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm cursor-pointer transition-colors whitespace-nowrap ${
-          kind === 'packing'
-            ? 'bg-[#EBF3FB] hover:bg-[#2F5F96] text-[#2F5F96] hover:text-white'
-            : 'bg-[#FFF0F3] hover:bg-[#C94F6D] text-[#C94F6D] hover:text-white'
-        }`}
+        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm cursor-pointer transition-colors whitespace-nowrap ${kind === 'packing'
+          ? 'bg-[#EBF3FB] hover:bg-[#2F5F96] text-[#2F5F96] hover:text-white'
+          : 'bg-[#FFF0F3] hover:bg-[#C94F6D] text-[#C94F6D] hover:text-white'
+          }`}
       >
         <Icon className="w-5 h-5" />
         <span>{L.button}</span>
