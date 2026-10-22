@@ -12,7 +12,30 @@ const pad = (n: number) => String(n).padStart(2, '0');
 
 const IST_OFFSET_MIN = 330; // UTC+5:30
 
-// -> 16/10/26 (IST). DB timestamps are treated as UTC unless they carry an explicit offset.
+const hasZone = (s: string) => /(Z|[+-]\d{2}:?\d{2})$/.test(s);
+
+// Splits a timestamp into IST date/time parts.
+// - Has a zone (ends with Z or +05:30): converted to IST.
+// - No zone ("2026-10-22 14:37:00"): already IST, used as is.
+const toIstParts = (value: string) => {
+  const s = value.trim().replace(' ', 'T');
+  if (!hasZone(s)) {
+    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{1,2}):(\d{2})/);
+    return m ? { y: m[1], mo: m[2], d: m[3], h: Number(m[4]), mi: Number(m[5]) } : null;
+  }
+  const ms = Date.parse(s);
+  if (isNaN(ms)) return null;
+  const d = new Date(ms + IST_OFFSET_MIN * 60000);
+  return {
+    y: String(d.getUTCFullYear()),
+    mo: pad(d.getUTCMonth() + 1),
+    d: pad(d.getUTCDate()),
+    h: d.getUTCHours(),
+    mi: d.getUTCMinutes(),
+  };
+};
+
+// -> 16/10/26 (IST)
 const getDateText = (value?: string | null) => {
   if (!value) return '';
   const s = String(value).trim();
@@ -21,33 +44,22 @@ const getDateText = (value?: string | null) => {
   const only = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (only) return `${only[3]}/${only[2]}/${only[1].slice(-2)}`;
 
-  let iso = s.replace(' ', 'T');
-  if (!/(Z|[+-]\d{2}:?\d{2})$/.test(iso)) iso += 'Z'; // naive timestamp from DB = UTC
-  const ms = Date.parse(iso);
-  if (isNaN(ms)) return s;
-
-  const d = new Date(ms + IST_OFFSET_MIN * 60000);
-  return `${pad(d.getUTCDate())}/${pad(d.getUTCMonth() + 1)}/${String(d.getUTCFullYear()).slice(-2)}`;
+  const p = toIstParts(s);
+  return p ? `${p.d}/${p.mo}/${p.y.slice(-2)}` : s;
 };
 
 const to12h = (h: number, min: number) =>
   `${h % 12 || 12}:${pad(min)} ${h >= 12 ? 'pm' : 'am'}`; // 8:11 am
 
-// -> 8:11 am (IST). DB values are treated as UTC unless they carry an explicit offset.
+// -> 8:11 am (IST)
 const getTimeText = (createdAt?: string | null, timeOnly?: string | null) => {
   if (createdAt) {
-    let s = String(createdAt).trim().replace(' ', 'T');
-    const hasZone = /(Z|[+-]\d{2}:?\d{2})$/.test(s);
-    if (!hasZone) s += 'Z'; // naive timestamp from DB = UTC
-    const ms = Date.parse(s);
-    if (!isNaN(ms)) {
-      const d = new Date(ms + IST_OFFSET_MIN * 60000);
-      return to12h(d.getUTCHours(), d.getUTCMinutes());
-    }
+    const p = toIstParts(String(createdAt));
+    if (p) return to12h(p.h, p.mi);
   }
 
-  // Fallback: plain time column ("08:11:00"), assumed UTC.
-  // If your timeOnly is already saved in IST, remove "+ IST_OFFSET_MIN" below.
+  // Fallback: plain time column ("08:11:00"). This column came out 5:30 behind earlier,
+  // so it is treated as UTC. If it is already IST, remove "+ IST_OFFSET_MIN" below.
   const t = String(timeOnly ?? '').match(/^(\d{1,2}):(\d{2})/);
   if (t) {
     const total = (Number(t[1]) * 60 + Number(t[2]) + IST_OFFSET_MIN) % 1440;
