@@ -25,12 +25,31 @@ const to12h = (h: number, min: number) =>
 
 // -> 8:11 am (works with "08:11:00" or a full date-time string)
 const getTimeText = (createdAt?: string | null, timeOnly?: string | null) => {
+  // Use the plain time column first (e.g. "08:11:00"), no timezone shift
+  const t = String(timeOnly ?? '').match(/^(\d{1,2}):(\d{2})/);
+  if (t) return to12h(Number(t[1]), Number(t[2]));
+
   if (createdAt) {
-    const d = new Date(createdAt);
-    if (!isNaN(d.getTime())) return to12h(d.getHours(), d.getMinutes());
+    const s = String(createdAt);
+
+    // "2026-10-16 08:11:00" (no Z): read as is
+    const m = s.match(/^\d{4}-\d{2}-\d{2}[T ](\d{2}):(\d{2})(?!.*(Z|[+-]\d{2}:?\d{2}))/);
+    if (m) return to12h(Number(m[1]), Number(m[2]));
+
+    // UTC string (ends with Z): convert to IST
+    const d = new Date(s);
+    if (!isNaN(d.getTime())) {
+      return d
+        .toLocaleTimeString('en-IN', {
+          timeZone: 'Asia/Kolkata',
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+        })
+        .toLowerCase();
+    }
   }
-  const m = String(timeOnly ?? '').match(/^(\d{1,2}):(\d{2})/);
-  return m ? to12h(Number(m[1]), Number(m[2])) : String(timeOnly ?? '');
+  return String(timeOnly ?? '');
 };
 
 // -> 001, 002 ... (uses the id if it's a number)
