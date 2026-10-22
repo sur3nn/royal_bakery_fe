@@ -87,6 +87,41 @@ const getTimeText = (createdAt?: string | null, timeOnly?: string | null) => {
   return String(timeOnly ?? '');
 };
 
+// Rewrites any delivery value as 26/10/26 06:45 pm (accepts ISO, dd/mm/yy [time], or text like "Oct 26, 2026, 6:45 PM")
+const formatDelivery = (raw: any, timeValue?: any) => {
+  if (raw == null) return '';
+  const s = String(raw).trim();
+  if (!s) return '';
+  const tv = timeValue == null ? null : String(timeValue);
+
+  // 2026-10-26 / 2026-10-26T18:45:00 / 2026-10-26 18:45:00
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return getDateTimeText(s, tv);
+
+  // 26/10/26, 26/10/2026 06:45 pm, 26-10-26 18:45
+  const m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})(?:[,\s]+(\d{1,2}):(\d{2})(?::\d{2})?\s*([ap]m)?)?/i);
+  if (m) {
+    const date = `${pad(Number(m[1]))}/${pad(Number(m[2]))}/${m[3].slice(-2)}`;
+    if (m[4] == null) {
+      const t = String(tv ?? '').match(/^(\d{1,2}):(\d{2})/);
+      return t ? `${date} ${to12h(Number(t[1]), Number(t[2]), true)}` : date;
+    }
+    let h = Number(m[4]);
+    const ap = m[6]?.toLowerCase();
+    if (ap === 'pm' && h < 12) h += 12;
+    if (ap === 'am' && h === 12) h = 0;
+    return `${date} ${to12h(h, Number(m[5]), true)}`;
+  }
+
+  // anything else the browser can read
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) {
+    const date = `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${String(d.getFullYear()).slice(-2)}`;
+    if (d.getHours() === 0 && d.getMinutes() === 0) return date;
+    return `${date} ${to12h(d.getHours(), d.getMinutes(), true)}`;
+  }
+  return s;
+};
+
 // -> 001, 002 ... (uses the id if it's a number)
 const getBillNo = (inv: any) => {
   const seq = inv.id;
@@ -122,8 +157,19 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
   const timeText = getTimeText(invoice.createdAt, invoice.timeOnly);
 
   // Delivery date for bulk bills: prefer the ready-made text, else format the raw date
-  const deliveryText =
-    getDateTimeText(k.deliveryDate ?? k.deliveryDateTime, k.deliveryTime) || k.deliveryText || '';
+  const deliveryTimeField = k.deliveryTime ?? k.delivery_time;
+  const deliveryResults = [
+    k.deliveryDateTime,
+    k.deliveryAt,
+    k.delivery_datetime,
+    k.deliveryDate,
+    k.delivery_date,
+    k.deliveryText,
+  ]
+    .map((v) => formatDelivery(v, deliveryTimeField))
+    .filter(Boolean);
+  // prefer a value that includes the time, else the first one found
+  const deliveryText = deliveryResults.find((r) => /\d:\d{2}/.test(r)) ?? deliveryResults[0] ?? '';
 
   // Roll width is set by paperMm / bodyMm above.
   const printStyles = `
@@ -410,33 +456,43 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                       </div>
                     </div>
 
-                    {/* Items: no | porul | alavu | vilai | thogai */}
+                    {/* Items: no | porul | alavu | vilai | thogai (one fixed table: header and rows share the same columns) */}
                     <div className="py-3 border-b border-dashed border-black">
-                      <div className="grid grid-cols-[9mm_minmax(0,1fr)_16mm_13mm_16mm] gap-x-1.5 font-bold pb-2 border-b border-black">
-                        <span className="text-left whitespace-nowrap">எண்</span>
-                        <span className="text-left whitespace-nowrap">பொருள்</span>
-                        <span className="text-left whitespace-nowrap">அளவு</span>
-                        <span className="text-left whitespace-nowrap">விலை</span>
-                        <span className="text-left whitespace-nowrap">தொகை</span>
-                      </div>
-
-                      <div className="space-y-3 pt-2.5">
-                        {invoice.items.map((it, idx) => (
-                          <div key={idx} className="grid grid-cols-[9mm_minmax(0,1fr)_16mm_13mm_16mm] gap-x-1.5 items-start tabular-nums">
-                            <span className="text-left">{idx + 1}</span>
-                            <p className="font-bold text-black whitespace-normal break-words min-w-0">{it.productName}</p>
-                            <span className="text-left whitespace-nowrap">
-                              {it.quantity} {it.unit}
-                            </span>
-                            <span className="text-left whitespace-nowrap">
-                              {it.price.toLocaleString()}
-                            </span>
-                            <span className="text-left font-bold whitespace-nowrap">
-                              {it.total.toLocaleString()}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
+                      <table className="w-full table-fixed border-collapse text-left">
+                        <colgroup>
+                          <col style={{ width: '9mm' }} />
+                          <col />
+                          <col style={{ width: '17mm' }} />
+                          <col style={{ width: '15mm' }} />
+                          <col style={{ width: '17mm' }} />
+                        </colgroup>
+                        <thead>
+                          <tr>
+                            <th className="text-left font-bold align-top whitespace-nowrap pb-2 pr-1.5 border-b border-black">எண்</th>
+                            <th className="text-left font-bold align-top whitespace-nowrap pb-2 pr-1.5 border-b border-black">பொருள்</th>
+                            <th className="text-left font-bold align-top whitespace-nowrap pb-2 pr-1.5 border-b border-black">அளவு</th>
+                            <th className="text-left font-bold align-top whitespace-nowrap pb-2 pr-1.5 border-b border-black">விலை</th>
+                            <th className="text-left font-bold align-top whitespace-nowrap pb-2 pr-1.5 border-b border-black">தொகை</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {invoice.items.map((it, idx) => (
+                            <tr key={idx}>
+                              <td className="text-left align-top pt-2.5 pr-1.5 tabular-nums">{idx + 1}</td>
+                              <td className="text-left align-top pt-2.5 pr-1.5 font-bold text-black break-words">{it.productName}</td>
+                              <td className="text-left align-top pt-2.5 pr-1.5 whitespace-nowrap">
+                                {it.quantity} {it.unit}
+                              </td>
+                              <td className="text-left align-top pt-2.5 pr-1.5 whitespace-nowrap tabular-nums">
+                                {it.price.toLocaleString()}
+                              </td>
+                              <td className="text-left align-top pt-2.5 pr-1.5 whitespace-nowrap font-bold tabular-nums">
+                                {it.total.toLocaleString()}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
 
                     {/* Totals: total / advance / balance (right side) */}
