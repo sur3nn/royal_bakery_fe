@@ -10,44 +10,48 @@ interface InvoiceModalProps {
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
-// -> 16/10/26 (works with "2026-10-16", "2026-10-16T00:00:00.000Z", or a Date string)
+const IST_OFFSET_MIN = 330; // UTC+5:30
+
+// -> 16/10/26 (IST). DB timestamps are treated as UTC unless they carry an explicit offset.
 const getDateText = (value?: string | null) => {
   if (!value) return '';
-  const m = String(value).match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (m) return `${m[3]}/${m[2]}/${m[1].slice(-2)}`; // no timezone shift
-  const d = new Date(value);
-  if (isNaN(d.getTime())) return String(value);
-  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${String(d.getFullYear()).slice(-2)}`;
+  const s = String(value).trim();
+
+  // Date-only value ("2026-10-16"): no time, so no shift needed
+  const only = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (only) return `${only[3]}/${only[2]}/${only[1].slice(-2)}`;
+
+  let iso = s.replace(' ', 'T');
+  if (!/(Z|[+-]\d{2}:?\d{2})$/.test(iso)) iso += 'Z'; // naive timestamp from DB = UTC
+  const ms = Date.parse(iso);
+  if (isNaN(ms)) return s;
+
+  const d = new Date(ms + IST_OFFSET_MIN * 60000);
+  return `${pad(d.getUTCDate())}/${pad(d.getUTCMonth() + 1)}/${String(d.getUTCFullYear()).slice(-2)}`;
 };
 
 const to12h = (h: number, min: number) =>
   `${h % 12 || 12}:${pad(min)} ${h >= 12 ? 'pm' : 'am'}`; // 8:11 am
 
-// -> 8:11 am (works with "08:11:00" or a full date-time string)
+// -> 8:11 am (IST). DB values are treated as UTC unless they carry an explicit offset.
 const getTimeText = (createdAt?: string | null, timeOnly?: string | null) => {
-  // Use the plain time column first (e.g. "08:11:00"), no timezone shift
-  const t = String(timeOnly ?? '').match(/^(\d{1,2}):(\d{2})/);
-  if (t) return to12h(Number(t[1]), Number(t[2]));
-
   if (createdAt) {
-    const s = String(createdAt);
-
-    // "2026-10-16 08:11:00" (no Z): read as is
-    const m = s.match(/^\d{4}-\d{2}-\d{2}[T ](\d{2}):(\d{2})(?!.*(Z|[+-]\d{2}:?\d{2}))/);
-    if (m) return to12h(Number(m[1]), Number(m[2]));
-
-    // UTC string (ends with Z): convert to IST
-    const d = new Date(s);
-    if (!isNaN(d.getTime())) {
-      return d
-        .toLocaleTimeString('en-IN', {
-          timeZone: 'Asia/Kolkata',
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true,
-        })
-        .toLowerCase();
+    let s = String(createdAt).trim().replace(' ', 'T');
+    const hasZone = /(Z|[+-]\d{2}:?\d{2})$/.test(s);
+    if (!hasZone) s += 'Z'; // naive timestamp from DB = UTC
+    const ms = Date.parse(s);
+    if (!isNaN(ms)) {
+      const d = new Date(ms + IST_OFFSET_MIN * 60000);
+      return to12h(d.getUTCHours(), d.getUTCMinutes());
     }
+  }
+
+  // Fallback: plain time column ("08:11:00"), assumed UTC.
+  // If your timeOnly is already saved in IST, remove "+ IST_OFFSET_MIN" below.
+  const t = String(timeOnly ?? '').match(/^(\d{1,2}):(\d{2})/);
+  if (t) {
+    const total = (Number(t[1]) * 60 + Number(t[2]) + IST_OFFSET_MIN) % 1440;
+    return to12h(Math.floor(total / 60), total % 60);
   }
   return String(timeOnly ?? '');
 };
