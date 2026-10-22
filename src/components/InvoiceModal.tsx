@@ -62,6 +62,9 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
   const dateText = getDateText(invoice.createdAt ?? invoice.dateOnly);
   const timeText = getTimeText(invoice.createdAt, invoice.timeOnly);
 
+  // Delivery date for bulk bills: prefer the ready-made text, else format the raw date
+  const deliveryText = k.deliveryText || getDateText(k.deliveryDate ?? k.deliveryDateTime);
+
   // For a 58mm roll: change 80mm -> 58mm and 78mm -> 56mm below.
   const printStyles = `
 @media print {
@@ -338,6 +341,16 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                   <p className="nowrap whitespace-nowrap">பில் எண்: {getBillNo(invoice)}</p>
                   <p className="nowrap whitespace-nowrap">தேதி: {dateText}</p>
                   <p className="nowrap whitespace-nowrap">நேரம்: {timeText}</p>
+
+                  {/* Bulk order bill: customer name and delivery date */}
+                  {k.isBulk && (
+                    <>
+                      <p className="break-words">வாடிக்கையாளர்: {invoice.customerName}</p>
+                      {deliveryText && (
+                        <p className="break-words">டெலிவரி தேதி: {deliveryText}</p>
+                      )}
+                    </>
+                  )}
                 </div>
 
                 {/* Items List */}
@@ -497,6 +510,9 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                     பில் விவரங்கள்:
                   </p>
                   <p className="text-[#29252A] mt-0.5">கவுண்டர்: கவுண்டர் #1 (POS)</p>
+                  {k.isBulk && deliveryText && (
+                    <p className="text-[#29252A]">டெலிவரி தேதி: {deliveryText}</p>
+                  )}
                 </div>
               </div>
 
