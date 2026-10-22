@@ -93,6 +93,11 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
   // Slips are always thermal
   const isThermal = isKot || printMode === 'thermal';
 
+  // Bulk order bill uses a wider roll: 80mm + 15mm = 95mm (print area is 2mm narrower)
+  const isBulkBill = !!k.isBulk && !isKot;
+  const paperMm = isBulkBill ? 95 : 80;
+  const bodyMm = paperMm - 2;
+
   // Separate date and time
   const dateText = getDateText(invoice.createdAt ?? invoice.dateOnly);
   const timeText = getTimeText(invoice.createdAt, invoice.timeOnly);
@@ -100,18 +105,18 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
   // Delivery date for bulk bills: prefer the ready-made text, else format the raw date
   const deliveryText = k.deliveryText || getDateText(k.deliveryDate ?? k.deliveryDateTime);
 
-  // For a 58mm roll: change 80mm -> 58mm and 78mm -> 56mm below.
+  // Roll width is set by paperMm / bodyMm above.
   const printStyles = `
 @media print {
   @page {
-    size: ${isThermal ? '80mm auto' : 'A4'};
+    size: ${isThermal ? `${paperMm}mm auto` : 'A4'};
     margin: ${isThermal ? '0' : '10mm'};
   }
   html, body {
     margin: 0 !important;
     padding: 0 !important;
     background: #fff !important;
-    ${isThermal ? 'width: 80mm !important;' : ''}
+    ${isThermal ? `width: ${paperMm}mm !important;` : ''}
   }
 
   /* show only the bill */
@@ -157,8 +162,8 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
     position: absolute !important;
     left: 0 !important;
     right: 0 !important;
-    width: 78mm !important;
-    max-width: 78mm !important;
+    width: ${bodyMm}mm !important;
+    max-width: ${bodyMm}mm !important;
     margin: 0 auto !important;
     padding: 3mm !important;
     box-sizing: border-box !important;
@@ -349,7 +354,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
               </div>
             ) : (
               /* ================= THERMAL 80mm RECEIPT LAYOUT ================= */
-              <div className="print-area thermal-receipt max-w-[400px] mx-auto bg-white p-5 border border-[#EDE2E5] shadow-sm rounded-xl font-mono text-[14px] text-black">
+              <div className={`print-area thermal-receipt ${isBulkBill ? 'max-w-[475px]' : 'max-w-[400px]'} mx-auto bg-white p-5 border border-[#EDE2E5] shadow-sm rounded-xl font-mono text-[14px] text-black`}>
                 {/* Brand Header */}
                 <div className="text-center space-y-1 pb-3 border-b border-dashed border-black">
                   <div className="flex items-center justify-center mx-auto mb-1">
@@ -371,21 +376,92 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                   </p>
                 </div>
 
+                {isBulkBill ? (
+                  <>
+                    {/* Bill info: bill no / order date, name / delivery date */}
+                    <div className="py-2.5 space-y-1 border-b border-dashed border-black text-[14px]">
+                      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-2">
+                        <p className="break-words">பில் எண்: {getBillNo(invoice)}</p>
+                        <p className="break-words">ஆர்டர் தேதி: {dateText}</p>
+                      </div>
+                      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-2">
+                        <p className="break-words">பெயர்: {invoice.customerName}</p>
+                        <p className="break-words">டெலிவரி தேதி: {deliveryText}</p>
+                      </div>
+                    </div>
+
+                    {/* Items: no | porul | alavu | vilai | thogai */}
+                    <div className="py-3 border-b border-dashed border-black">
+                      <div className="grid grid-cols-[6mm_minmax(0,1fr)_16mm_14mm_17mm] gap-x-1 font-bold pb-2 border-b border-black">
+                        <span className="text-left whitespace-nowrap">எண்</span>
+                        <span className="text-left whitespace-nowrap">பொருள்</span>
+                        <span className="text-left whitespace-nowrap">அளவு</span>
+                        <span className="text-right whitespace-nowrap">விலை</span>
+                        <span className="text-right whitespace-nowrap">தொகை</span>
+                      </div>
+
+                      <div className="space-y-3 pt-2.5">
+                        {invoice.items.map((it, idx) => (
+                          <div key={idx} className="grid grid-cols-[6mm_minmax(0,1fr)_16mm_14mm_17mm] gap-x-1 items-start tabular-nums">
+                            <span className="text-left">{idx + 1}</span>
+                            <p className="font-bold text-black whitespace-normal break-words">{it.productName}</p>
+                            <span className="text-left whitespace-nowrap">
+                              {it.quantity} {it.unit}
+                            </span>
+                            <span className="text-right whitespace-nowrap">
+                              {it.price.toLocaleString()}
+                            </span>
+                            <span className="text-right font-bold whitespace-nowrap">
+                              {it.total.toLocaleString()}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Totals: total / advance / balance (right side) */}
+                    <div className="py-2.5 border-b border-dashed border-black text-[14px]">
+                      <div className="ml-auto w-[68%] space-y-1">
+                        {invoice.discountTotal > 0 && (
+                          <div className="flex justify-between">
+                            <span>தள்ளுபடி:</span>
+                            <span>-₹{invoice.discountTotal.toLocaleString()}</span>
+                          </div>
+                        )}
+                        {hasGst && (
+                          <>
+                            <div className="flex justify-between">
+                              <span>சி.ஜி.எஸ்.டி (2.5%):</span>
+                              <span>₹{invoice.cgst.toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>எஸ்.ஜி.எஸ்.டி (2.5%):</span>
+                              <span>₹{invoice.sgst.toLocaleString()}</span>
+                            </div>
+                          </>
+                        )}
+                        <div className="flex justify-between font-bold">
+                          <span>மொத்தம்:</span>
+                          <span>₹{invoice.grandTotal.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>முன்பணம்:</span>
+                          <span>₹{Number(k.advancePaid ?? 0).toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between font-bold">
+                          <span>மீதித் தொகை:</span>
+                          <span>₹{Number(k.balanceDue ?? 0).toLocaleString()}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
                 {/* Bill Details */}
                 <div className="py-2.5 space-y-1 border-b border-dashed border-black text-[14px]">
                   <p className="nowrap whitespace-nowrap">பில் எண்: {getBillNo(invoice)}</p>
                   <p className="nowrap whitespace-nowrap">தேதி: {dateText}</p>
                   <p className="nowrap whitespace-nowrap">நேரம்: {timeText}</p>
-
-                  {/* Bulk order bill: customer name and delivery date */}
-                  {k.isBulk && (
-                    <>
-                      <p className="break-words">வாடிக்கையாளர்: {invoice.customerName}</p>
-                      {deliveryText && (
-                        <p className="break-words">டெலிவரி தேதி: {deliveryText}</p>
-                      )}
-                    </>
-                  )}
                 </div>
 
                 {/* Items List */}
@@ -485,6 +561,8 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                     </>
                   )}
                 </div>
+                  </>
+                )}
 
                 {/* Footer */}
                 <div className="text-center pt-3 border-t border-dashed border-black text-[14px]">
