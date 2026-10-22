@@ -54,7 +54,9 @@ const WEEKDAYS_TA = ['ஞா', 'தி', 'செ', 'பு', 'வி', 'வெ',
 
 // ---------- Tamil quantity formatting (0.25 -> 250 கிராம், 1.5 -> 1.5 கிலோ) ----------
 const isKg = (unit?: string) =>
-  ['kg', 'kgs', 'kilogram', 'kilograms'].includes(String(unit || '').trim().toLowerCase());
+  ['kg', 'kgs', 'kilogram', 'kilograms', 'கிலோ'].includes(
+    String(unit || '').trim().toLowerCase().replace(/\./g, '')
+  );
 
 const unitTa = (unit?: string) => {
   const u = String(unit || '').trim().toLowerCase();
@@ -65,9 +67,14 @@ const unitTa = (unit?: string) => {
   return unit || '';
 };
 
+const isGram = (unit?: string) =>
+  ['gm', 'g', 'gram', 'grams'].includes(String(unit || '').trim().toLowerCase());
+
 const fmtTa = (qty: number, unit?: string, keepKg = false) => {
+  // kitchen: grams -> kg (7500 g -> 7.5 கிலோ)
+  if (keepKg && isGram(unit)) return `${+(qty / 1000).toFixed(3)} கிலோ`;
+
   if (!isKg(unit)) return `${+qty.toFixed(3)} ${unitTa(unit)}`.trim();
-  // keepKg = always show கிலோ (0.25 கிலோ), otherwise < 1 kg becomes கிராம்
   return keepKg || qty >= 1
     ? `${+qty.toFixed(3)} கிலோ`
     : `${Math.round(qty * 1000)} கிராம்`;
@@ -190,6 +197,7 @@ export const KitchenKotButton: React.FC<KitchenKotButtonProps> = ({ kind = 'kitc
       }
 
       const { rows, orderCount } = j.data;
+      console.log('KOT rows:', rows);
       const range = `${showDate(start)} - ${showDate(effectiveTo)}`;
 
       // Same shape the InvoiceModal already understands
