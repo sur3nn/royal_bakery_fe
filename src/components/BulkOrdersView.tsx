@@ -101,6 +101,13 @@ const toInvoice = (o: any): Invoice => {
       const gram = isGram(i.unit);
       const qty = Number(i.quantity) || 0;
       const price = Number(i.price ?? i.rate) || 0;
+
+      // Pack breakdown for the bill's alavu column (e.g. 2 Kg x 10).
+      // Grams are converted to kg, same as the quantity above.
+      const rawSize = Number(i.packSize ?? i.pack_size);
+      const rawCount = Number(i.packCount ?? i.pack_count);
+      const hasPack = rawSize > 0 && rawCount > 0;
+
       return {
         productName: i.productName ?? i.product_name,
         category: '',
@@ -108,6 +115,8 @@ const toInvoice = (o: any): Invoice => {
         quantity: inKg(qty, i.unit), // 100 g -> 0.1 Kg
         price: gram ? Math.round(price * 1000 * 100) / 100 : price, // price per g -> price per Kg
         total: Number(i.total ?? i.amount) || 0, // amount does not change
+        packSize: hasPack ? inKg(rawSize, i.unit) : undefined,
+        packCount: hasPack ? rawCount : undefined,
       };
     }),
     // extra fields used by the modal for bulk orders
