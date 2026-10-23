@@ -138,7 +138,7 @@ const toFraction = (n: number): string => {
   return String(+n.toFixed(2));
 };
 
-// Quantity lines for the bulk bill's alavu column, one line per pack size: ["1/2 x 4", "4/3 x 3"].
+// Quantity lines for the bulk bill's alavu column, one line per pack size: ["1/2 Kg x 4", "4/3 Kg x 3"].
 // Falls back to the plain total ("3.5 Kg") when the item has no pack breakdown.
 const getQtyLines = (it: any): string[] => {
   const unit = it.unit ?? '';
@@ -147,17 +147,19 @@ const getQtyLines = (it: any): string[] => {
     const n = Number(v);
     return isNaN(n) ? String(v) : toFraction(n);
   };
-  const line = (size: any, count: any) =>
-    has(count) ? `${fmtSize(size)} x ${count}` : fmtSize(size);
+  const line = (size: any, count: any, u: any = unit) => {
+    const head = `${fmtSize(size)} ${u ?? ''}`.trim(); // "1/2 Kg"
+    return has(count) ? `${head} x ${count}` : head;
+  };
 
-  // 1) a list of packs: ["1/2 x 4"] or [{ size: 0.5, count: 4 }]
+  // 1) a list of packs: ["1/2 Kg x 4"] or [{ size: 0.5, count: 4 }]
   const list = it.packs ?? it.packLines ?? it.pack_lines ?? it.packList;
   if (Array.isArray(list) && list.length) {
     return list.map((p: any) => {
       if (typeof p === 'string') return p;
       const size = p.size ?? p.packSize ?? p.pack_size ?? p.qty ?? p.quantity;
       const count = p.count ?? p.packCount ?? p.pack_count ?? p.nos ?? p.packs;
-      return has(size) ? line(size, count) : '';
+      return has(size) ? line(size, count, p.unit ?? unit) : '';
     }).filter(Boolean);
   }
 
@@ -510,7 +512,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                         <colgroup>
                           <col style={{ width: '9mm' }} />
                           <col />
-                          <col style={{ width: '25mm' }} />
+                          <col style={{ width: '29mm' }} />
                           <col style={{ width: '15mm' }} />
                           <col style={{ width: '17mm' }} />
                         </colgroup>
