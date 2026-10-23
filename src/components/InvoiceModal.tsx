@@ -502,7 +502,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                       </div>
                       <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-x-2">
                         <p className="break-words">பெயர்: {invoice.customerName}</p>
-                        <p className="break-words">டெலிவரி தேதி: {deliveryText}</p>
+                        {deliveryText && <p className="break-words">டெலிவரி தேதி: {deliveryText}</p>}
                       </div>
                     </div>
 
@@ -572,14 +572,32 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                           <span>மொத்தம்:</span>
                           <span>₹{invoice.grandTotal.toLocaleString()}</span>
                         </div>
-                        <div className="flex justify-between">
-                          <span>முன்பணம்:</span>
-                          <span>₹{Number(k.advancePaid ?? 0).toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between font-bold">
-                          <span>மீதித் தொகை:</span>
-                          <span>₹{Number(k.balanceDue ?? 0).toLocaleString()}</span>
-                        </div>
+                        {deliveryText ? (
+                          <>
+                            <div className="flex justify-between">
+                              <span>முன்பணம்:</span>
+                              <span>₹{Number(k.advancePaid ?? 0).toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between font-bold">
+                              <span>மீதித் தொகை:</span>
+                              <span>₹{Number(k.balanceDue ?? 0).toLocaleString()}</span>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            {/* regular counter sale printed in the same layout */}
+                            <div className="flex justify-between">
+                              <span>கொடுத்தது:</span>
+                              <span>₹{Number(invoice.amountPaid ?? 0).toLocaleString()}</span>
+                            </div>
+                            {invoice.balanceReturn > 0 && (
+                              <div className="flex justify-between font-bold">
+                                <span>மீதி திருப்பியது:</span>
+                                <span>₹{invoice.balanceReturn.toLocaleString()}</span>
+                              </div>
+                            )}
+                          </>
+                        )}
                       </div>
                     </div>
                   </>
