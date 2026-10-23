@@ -122,6 +122,34 @@ const formatDelivery = (raw: any, timeValue?: any) => {
   return s;
 };
 
+// Quantity lines for the bulk bill's alavu column, one line per pack size: ["0.5 kg x 2", "1 kg x 1"].
+// Falls back to the plain total ("3.5 kg") when the item has no pack breakdown.
+const getQtyLines = (it: any): string[] => {
+  const unit = it.unit ?? '';
+  const has = (v: any) => v != null && String(v).trim() !== '';
+  const line = (size: any, count: any, u: any) =>
+    has(count) ? `${size} ${u} x ${count}`.replace(/\s+/g, ' ').trim() : `${size} ${u}`.trim();
+
+  // 1) a list of packs: ["0.5 kg x 2"] or [{ size: 0.5, count: 2 }]
+  const list = it.packs ?? it.packLines ?? it.pack_lines ?? it.packList;
+  if (Array.isArray(list) && list.length) {
+    return list.map((p: any) => {
+      if (typeof p === 'string') return p;
+      const size = p.size ?? p.packSize ?? p.pack_size ?? p.qty ?? p.quantity;
+      const count = p.count ?? p.packCount ?? p.pack_count ?? p.nos ?? p.packs;
+      return has(size) ? line(size, count, p.unit ?? unit) : '';
+    }).filter(Boolean);
+  }
+
+  // 2) a single pack size and count on the item
+  const size = it.packSize ?? it.pack_size ?? it.perPack ?? it.per_pack;
+  const count = it.packCount ?? it.pack_count ?? it.numPacks ?? it.nos;
+  if (has(size) && has(count)) return [line(size, count, unit)];
+
+  // 3) plain total
+  return [`${it.quantity} ${unit}`.trim()];
+};
+
 // -> 001, 002 ... (uses the id if it's a number)
 const getBillNo = (inv: any) => {
   const seq = inv.id;
@@ -461,8 +489,8 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                       <table className="w-full table-fixed border-collapse text-left">
                         <colgroup>
                           <col style={{ width: '9mm' }} />
-                          <col style={{ width: '17mm' }} />
-                          <col style={{ width: '17mm' }} />
+                          <col />
+                          <col style={{ width: '25mm' }} />
                           <col style={{ width: '15mm' }} />
                           <col style={{ width: '17mm' }} />
                         </colgroup>
@@ -480,8 +508,10 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                             <tr key={idx}>
                               <td className="text-left align-top pt-2.5 pr-1.5 tabular-nums">{idx + 1}</td>
                               <td className="text-left align-top pt-2.5 pr-1.5 font-bold text-black break-words">{it.productName}</td>
-                              <td className="text-left align-top pt-2.5 pr-1.5 whitespace-nowrap">
-                                {it.quantity} {it.unit}
+                              <td className="text-left align-top pt-2.5 pr-1.5">
+                                {getQtyLines(it).map((q, qi) => (
+                                  <div key={qi} className="whitespace-nowrap">{q}</div>
+                                ))}
                               </td>
                               <td className="text-left align-top pt-2.5 pr-1.5 whitespace-nowrap tabular-nums">
                                 {it.price.toLocaleString()}
