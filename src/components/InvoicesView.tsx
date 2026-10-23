@@ -26,6 +26,38 @@ interface InvoicesViewProps {
   onViewInvoice: (invoice: Invoice) => void;
 }
 
+/* ---------- helpers for bulk-order bills (same rules as BulkOrdersView) ---------- */
+
+const isGram = (unit?: string) =>
+  ['g', 'gm', 'gms', 'gram', 'grams'].includes(String(unit || '').trim().toLowerCase());
+
+// Grams -> kg (100 g -> 0.1). Any other unit is returned unchanged.
+const inKg = (qty: number, unit?: string) => (isGram(unit) ? +(qty / 1000).toFixed(3) : qty);
+
+// Reads numbers and fractions: 0.5, "0.5", "1/2", "4/3", "1 1/2"
+const toNum = (v: any): number => {
+  if (typeof v === 'number') return v;
+  const s = String(v ?? '').trim();
+  if (!s) return NaN;
+  const mixed = s.match(/^(\d+)\s+(\d+)\s*\/\s*(\d+)$/);
+  if (mixed) return Number(mixed[1]) + Number(mixed[2]) / Number(mixed[3]);
+  const frac = s.match(/^(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)$/);
+  if (frac) return Number(frac[1]) / Number(frac[2]);
+  return Number(s);
+};
+
+const has = (v: any) => v != null && String(v).trim() !== '';
+
+// A sale that came from a bulk order (marked as bulk, or carrying delivery / advance details)
+const looksBulk = (inv: any) =>
+  !!(inv.isBulk ?? inv.is_bulk) ||
+  String(inv.orderType ?? inv.order_type ?? inv.saleType ?? inv.sale_type ?? '')
+    .toLowerCase()
+    .includes('bulk') ||
+  has(inv.bulkOrderId ?? inv.bulk_order_id) ||
+  has(inv.deliveryDate ?? inv.delivery_date) ||
+  Number(inv.advancePaid ?? inv.advance_paid ?? 0) > 0;
+
 export const InvoicesView: React.FC<InvoicesViewProps> = ({ 
   invoices: initialInvoices = [], 
   onViewInvoice 
@@ -67,32 +99,90 @@ export const InvoicesView: React.FC<InvoicesViewProps> = ({
   const cashTotal = effectiveInvoices
     .filter((i: any) => (i.paymentMethod || i.payment_method) === 'Cash')
     .reduce((acc, i: any) => acc + Number(i.grandTotal ?? i.grand_total ?? 0), 0);
-const normalizeInvoiceForModal = (inv: any) => ({
-  id:inv.id,
-  invoiceNumber: inv.invoiceNumber || inv.invoice_number,
-  dateOnly: inv.dateOnly || inv.sale_date,
-  timeOnly: inv.timeOnly || inv.sale_time,
-  customerName: inv.customerName || inv.customer_name || 'Counter Customer',
-  customerPhone: inv.customerPhone || inv.customer_phone || '',
-  cashierName: inv.cashierName || (inv.cashier_id ? `Staff #${inv.cashier_id}` : 'N/A'),
-  status: inv.status || 'Completed',
-  subtotal: Number(inv.subtotal) || 0,
-  discountTotal: Number(inv.discountTotal ?? inv.discount) || 0,
-  cgst: Number(inv.cgst) || 0,
-  sgst: Number(inv.sgst) || 0,
-  grandTotal: Number(inv.grandTotal ?? inv.grand_total) || 0,
-  amountPaid: Number(inv.amountPaid ?? inv.amount_paid) || 0,
-  balanceReturn: Number(inv.balanceReturn ?? inv.balance_return) || 0,
-  paymentMethod: inv.paymentMethod || inv.payment_method,
-  items: (inv.items || inv.sale_items || []).map((it: any) => ({
-    productName: it.productName || it.product_name_snapshot || it.product_name,
-    category: it.category || it.category_name || '',
-    unit: it.unit,
-    quantity: Number(it.quantity) || 0,
-    price: Number(it.price ?? it.price_per_unit) || 0,
-    total: Number(it.total) || 0,
-  })),
-});
+
+  // Sale -> the shape InvoiceModal understands.
+  // Bulk-order sales keep their bulk fields (delivery, advance, balance, pack size / count),
+  // so the modal prints the same bulk receipt as the Bulk Orders screen.
+  const normalizeInvoiceForModal = (inv: any) => {
+    const bulk = looksBulk(inv);
+
+    const grandTotal = Number(inv.grandTotal ?? inv.grand_total) || 0;
+    const base = {
+      id: inv.id,
+      invoiceNumber: inv.invoiceNumber || inv.invoice_number,
+      dateOnly: inv.dateOnly || inv.sale_date,
+      timeOnly: inv.timeOnly || inv.sale_time,
+      customerName: inv.customerName || inv.customer_name || 'Counter Customer',
+      customerPhone: inv.customerPhone || inv.customer_phone || '',
+      cashierName: inv.cashierName || (inv.cashier_id ? `Staff #${inv.cashier_id}` : 'N/A'),
+      status: inv.status || 'Completed',
+      subtotal: Number(inv.subtotal) || 0,
+      discountTotal: Number(inv.discountTotal ?? inv.discount) || 0,
+      cgst: Number(inv.cgst) || 0,
+      sgst: Number(inv.sgst) || 0,
+      grandTotal,
+      amountPaid: Number(inv.amountPaid ?? inv.amount_paid) || 0,
+      balanceReturn: Number(inv.balanceReturn ?? inv.balance_return) || 0,
+      paymentMethod: inv.paymentMethod || inv.payment_method,
+    };
+
+    if (!bulk) {
+      return {
+        ...base,
+        items: (inv.items || inv.sale_items || []).map((it: any) => ({
+          productName: it.productName || it.product_name_snapshot || it.product_name,
+          category: it.category || it.category_name || '',
+          unit: it.unit,
+          quantity: Number(it.quantity) || 0,
+          price: Number(it.price ?? it.price_per_unit) || 0,
+          total: Number(it.total) || 0,
+        })),
+      };
+    }
+
+    // ----- bulk order bill -----
+    const advance = Number(inv.advancePaid ?? inv.advance_paid ?? inv.amountPaid ?? inv.amount_paid ?? 0) || 0;
+    const balance = Number(
+      inv.balanceDue ?? inv.balance_due ?? inv.remainingAmount ?? inv.remaining_amount ?? grandTotal - advance
+    );
+    const deliveryDate = inv.deliveryDate ?? inv.delivery_date;
+    const deliveryTime = inv.deliveryTime ?? inv.delivery_time;
+
+    return {
+      ...base,
+      createdAt: inv.createdAt ?? inv.created_at,
+      items: (inv.items || inv.sale_items || inv.products || []).map((it: any) => {
+        const unit = it.unit;
+        const gram = isGram(unit);
+        const qty = toNum(it.quantity) || 0;
+        const price = Number(it.price ?? it.price_per_unit ?? it.rate) || 0;
+
+        // pack breakdown for the alavu column (e.g. 1/2 Kg x 4); grams -> kg
+        const rawSize = toNum(it.packSize ?? it.pack_size);
+        const rawCount = toNum(it.packCount ?? it.pack_count);
+        const hasPack = rawSize > 0 && rawCount > 0;
+
+        return {
+          productName: it.productName || it.product_name_snapshot || it.product_name,
+          category: it.category || it.category_name || '',
+          unit: gram ? 'Kg' : unit,
+          quantity: +inKg(qty, unit).toFixed(3),
+          price: gram ? Math.round(price * 1000 * 100) / 100 : price,
+          total: Number(it.total ?? it.amount) || 0,
+          packSize: hasPack ? +inKg(rawSize, unit).toFixed(3) : undefined,
+          packCount: hasPack ? +rawCount.toFixed(3) : undefined,
+        };
+      }),
+      isBulk: true,
+      occasion: inv.occasion ?? '',
+      specialInstructions: inv.specialInstructions ?? inv.special_instructions ?? '',
+      advancePaid: advance,
+      balanceDue: balance,
+      deliveryDate,
+      deliveryTime,
+    };
+  };
+
   return (
     <div className="space-y-5 pb-12">
       {/* Header */}
@@ -219,18 +309,18 @@ const normalizeInvoiceForModal = (inv: any) => ({
                   </td>
                 </tr>
               ) : (
-             filteredInvoices.map((inv, idx) => {
-  const invNum = inv.invoiceNumber || (inv as any).invoice_number;
-  const dateOnly = inv.dateOnly || (inv as any).created_at?.split('T')[0] || 'Today';
-  const timeOnly = inv.timeOnly || '';
-  const custName = inv.customerName || (inv as any).customer_name;
-  const custPhone = inv.customerPhone || (inv as any).customer_phone;
-  const payMethod = inv.paymentMethod || (inv as any).payment_method || 'Cash';
-  const grndTotal = Number(inv.grandTotal ?? (inv as any).grand_total ?? 0);
-  const itemsList = inv.items || [];
+                filteredInvoices.map((inv, idx) => {
+                  const invNum = inv.invoiceNumber || (inv as any).invoice_number;
+                  const dateOnly = inv.dateOnly || (inv as any).created_at?.split('T')[0] || 'Today';
+                  const timeOnly = inv.timeOnly || '';
+                  const custName = inv.customerName || (inv as any).customer_name;
+                  const custPhone = inv.customerPhone || (inv as any).customer_phone;
+                  const payMethod = inv.paymentMethod || (inv as any).payment_method || 'Cash';
+                  const grndTotal = Number(inv.grandTotal ?? (inv as any).grand_total ?? 0);
+                  const itemsList = inv.items || [];
 
-  return (
-    <tr key={(inv as any).id ?? `sale-${idx}`} className="hover:bg-[#FFF9F5]/70 transition-colors">
+                  return (
+                    <tr key={(inv as any).id ?? `sale-${idx}`} className="hover:bg-[#FFF9F5]/70 transition-colors">
                       {/* Invoice Number */}
                       <td className="py-3 px-4 font-mono font-bold text-[#29252A]">
                         {invNum}
@@ -285,25 +375,24 @@ const normalizeInvoiceForModal = (inv: any) => ({
                       </td>
 
                       {/* Actions */}
-                    {/* Actions */}
-<td className="py-3 px-4 text-right">
-  <div className="flex items-center justify-end gap-1.5">
-  <button
- onClick={() => onViewInvoice(normalizeInvoiceForModal(inv) as Invoice)}
-  className="p-1.5 rounded-lg text-[#756B70] hover:text-[#C94F6D] hover:bg-[#FFF0F3] transition-colors cursor-pointer"
-  title={t.previewInvoiceTitle}
->
-  <Eye className="w-4 h-4" />
-</button>
-<button
- onClick={() => onViewInvoice(normalizeInvoiceForModal(inv) as Invoice)}
-  className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-[#FFF0F3] hover:bg-[#FCE7EC] text-[#C94F6D] font-bold text-xs transition-colors cursor-pointer"
->
-  <Printer className="w-3.5 h-3.5" />
-  <span>{t.printBillBtn}</span>
-</button>
-  </div>
-</td>
+                      <td className="py-3 px-4 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => onViewInvoice(normalizeInvoiceForModal(inv) as Invoice)}
+                            className="p-1.5 rounded-lg text-[#756B70] hover:text-[#C94F6D] hover:bg-[#FFF0F3] transition-colors cursor-pointer"
+                            title={t.previewInvoiceTitle}
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => onViewInvoice(normalizeInvoiceForModal(inv) as Invoice)}
+                            className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-[#FFF0F3] hover:bg-[#FCE7EC] text-[#C94F6D] font-bold text-xs transition-colors cursor-pointer"
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                            <span>{t.printBillBtn}</span>
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   );
                 })
