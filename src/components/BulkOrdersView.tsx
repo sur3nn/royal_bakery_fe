@@ -14,6 +14,18 @@ interface BulkOrdersViewProps {
   onUpdateStatus: (orderId: string, newStatus: any) => void;
 }
 
+// Reads numbers and fractions: 0.5, "0.5", "1/2", "4/3", "1 1/2" -> 0.5, 0.5, 0.5, 1.333, 1.5
+const toNum = (v: any): number => {
+  if (typeof v === 'number') return v;
+  const s = String(v ?? '').trim();
+  if (!s) return NaN;
+  const mixed = s.match(/^(\d+)\s+(\d+)\s*\/\s*(\d+)$/);
+  if (mixed) return Number(mixed[1]) + Number(mixed[2]) / Number(mixed[3]);
+  const frac = s.match(/^(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)$/);
+  if (frac) return Number(frac[1]) / Number(frac[2]);
+  return Number(s);
+};
+
 // Make every order look the same (handles camelCase and snake_case from the API)
 const simplify = (o: any) => ({
   raw: o, // keep the original so the bill view can use every field
@@ -28,9 +40,9 @@ const simplify = (o: any) => ({
   items: (o.products || []).map((i: any) => ({
     name: i.productName ?? i.product_name,
     unit: i.unit,
-    size: Number(i.packSize ?? i.pack_size ?? i.quantity),
-    boxes: Number(i.packCount ?? i.pack_count ?? 1),
-    total: Number(i.quantity),
+    size: toNum(i.packSize ?? i.pack_size ?? i.quantity),
+    boxes: toNum(i.packCount ?? i.pack_count ?? 1),
+    total: toNum(i.quantity),
   })),
 });
 
@@ -99,24 +111,24 @@ const toInvoice = (o: any): Invoice => {
     })(),
     items: (o.products || []).map((i: any) => {
       const gram = isGram(i.unit);
-      const qty = Number(i.quantity) || 0;
+      const qty = toNum(i.quantity) || 0;
       const price = Number(i.price ?? i.rate) || 0;
 
-      // Pack breakdown for the bill's alavu column (e.g. 2 Kg x 10).
-      // Grams are converted to kg, same as the quantity above.
-      const rawSize = Number(i.packSize ?? i.pack_size);
-      const rawCount = Number(i.packCount ?? i.pack_count);
+      // Pack breakdown for the bill's alavu column (e.g. 0.5 Kg x 10).
+      // Fractions like "1/2" are read as numbers; grams are converted to kg, same as the quantity.
+      const rawSize = toNum(i.packSize ?? i.pack_size);
+      const rawCount = toNum(i.packCount ?? i.pack_count);
       const hasPack = rawSize > 0 && rawCount > 0;
 
       return {
         productName: i.productName ?? i.product_name,
         category: '',
         unit: gram ? 'Kg' : i.unit,
-        quantity: inKg(qty, i.unit), // 100 g -> 0.1 Kg
+        quantity: +inKg(qty, i.unit).toFixed(3), // 100 g -> 0.1 Kg
         price: gram ? Math.round(price * 1000 * 100) / 100 : price, // price per g -> price per Kg
         total: Number(i.total ?? i.amount) || 0, // amount does not change
-        packSize: hasPack ? inKg(rawSize, i.unit) : undefined,
-        packCount: hasPack ? rawCount : undefined,
+        packSize: hasPack ? +inKg(rawSize, i.unit).toFixed(3) : undefined,
+        packCount: hasPack ? +rawCount.toFixed(3) : undefined,
       };
     }),
     // extra fields used by the modal for bulk orders
@@ -298,14 +310,20 @@ export const BulkOrdersView: React.FC<BulkOrdersViewProps> = ({
                   </td>
 
                   <td className="py-3.5 px-4 space-y-1.5">
-                    {o.items.map((i: any, idx: number) => (
-                      <p key={idx} className="text-xs text-[#29252A]">
-                        <span className="font-bold">{i.name}</span>: {i.total} {i.unit}
-                        <span className="text-[#756B70]">
-                          {' '}({i.size} {i.unit} x {i.boxes} {i.boxes === 1 ? 'box' : 'boxes'})
-                        </span>
-                      </p>
-                    ))}
+                    {o.items.map((i: any, idx: number) => {
+                      // always show kg: grams are converted (500 g -> 0.5 kg)
+                      const unit = isGram(i.unit) ? 'kg' : i.unit;
+                      const total = +inKg(i.total, i.unit).toFixed(3);
+                      const size = +inKg(i.size, i.unit).toFixed(3);
+                      return (
+                        <p key={idx} className="text-xs text-[#29252A]">
+                          <span className="font-bold">{i.name}</span>: {total} {unit}
+                          <span className="text-[#756B70]">
+                            {' '}({size} {unit} x {i.boxes} {i.boxes === 1 ? 'box' : 'boxes'})
+                          </span>
+                        </p>
+                      );
+                    })}
                   </td>
 
                   <td className="py-3.5 px-4">
