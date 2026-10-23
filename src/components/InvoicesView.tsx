@@ -123,6 +123,11 @@ export const InvoicesView: React.FC<InvoicesViewProps> = ({
       grandTotal,
       amountPaid: Number(inv.amountPaid ?? inv.amount_paid) || 0,
       balanceReturn: Number(inv.balanceReturn ?? inv.balance_return) || 0,
+      // required by the Invoice type
+      gstTotal:
+        Number(inv.gstTotal ?? inv.gst_total) ||
+        (Number(inv.cgst) || 0) + (Number(inv.sgst) || 0),
+      roundOff: Number(inv.roundOff ?? inv.round_off) || 0,
       paymentMethod: inv.paymentMethod || inv.payment_method,
     };
 
