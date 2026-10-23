@@ -122,29 +122,49 @@ const formatDelivery = (raw: any, timeValue?: any) => {
   return s;
 };
 
-// Quantity lines for the bulk bill's alavu column, one line per pack size: ["0.5 kg x 2", "1 kg x 1"].
-// Falls back to the plain total ("3.5 kg") when the item has no pack breakdown.
+// 0.5 -> "1/2", 1.3333 -> "4/3", 2 -> "2", 3.7 -> "3.7" (fractions with a denominator up to 8 only)
+const toFraction = (n: number): string => {
+  if (!isFinite(n) || n <= 0) return String(n);
+  const whole = Math.round(n);
+  if (Math.abs(n - whole) < 0.002) return String(whole);
+  const gcd = (x: number, y: number): number => (y ? gcd(y, x % y) : x);
+  for (let d = 2; d <= 8; d++) {
+    const num = Math.round(n * d);
+    if (num > 0 && Math.abs(n - num / d) < 0.002) {
+      const g = gcd(num, d);
+      return `${num / g}/${d / g}`;
+    }
+  }
+  return String(+n.toFixed(2));
+};
+
+// Quantity lines for the bulk bill's alavu column, one line per pack size: ["1/2 x 4", "4/3 x 3"].
+// Falls back to the plain total ("3.5 Kg") when the item has no pack breakdown.
 const getQtyLines = (it: any): string[] => {
   const unit = it.unit ?? '';
   const has = (v: any) => v != null && String(v).trim() !== '';
-  const line = (size: any, count: any, u: any) =>
-    has(count) ? `${size} ${u} x ${count}`.replace(/\s+/g, ' ').trim() : `${size} ${u}`.trim();
+  const fmtSize = (v: any) => {
+    const n = Number(v);
+    return isNaN(n) ? String(v) : toFraction(n);
+  };
+  const line = (size: any, count: any) =>
+    has(count) ? `${fmtSize(size)} x ${count}` : fmtSize(size);
 
-  // 1) a list of packs: ["0.5 kg x 2"] or [{ size: 0.5, count: 2 }]
+  // 1) a list of packs: ["1/2 x 4"] or [{ size: 0.5, count: 4 }]
   const list = it.packs ?? it.packLines ?? it.pack_lines ?? it.packList;
   if (Array.isArray(list) && list.length) {
     return list.map((p: any) => {
       if (typeof p === 'string') return p;
       const size = p.size ?? p.packSize ?? p.pack_size ?? p.qty ?? p.quantity;
       const count = p.count ?? p.packCount ?? p.pack_count ?? p.nos ?? p.packs;
-      return has(size) ? line(size, count, p.unit ?? unit) : '';
+      return has(size) ? line(size, count) : '';
     }).filter(Boolean);
   }
 
   // 2) a single pack size and count on the item
   const size = it.packSize ?? it.pack_size ?? it.perPack ?? it.per_pack;
   const count = it.packCount ?? it.pack_count ?? it.numPacks ?? it.nos;
-  if (has(size) && has(count)) return [line(size, count, unit)];
+  if (has(size) && has(count)) return [line(size, count)];
 
   // 3) plain total
   return [`${it.quantity} ${unit}`.trim()];
