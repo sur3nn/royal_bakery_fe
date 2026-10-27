@@ -12,6 +12,9 @@ const pad = (n: number) => String(n).padStart(2, '0');
 
 const IST_OFFSET_MIN = 330; // UTC+5:30
 
+// TODO: replace with the shop's real FSSAI licence number (placeholder for now)
+const FSSAI_NO = '12345678901234';
+
 const hasZone = (s: string) => /(Z|[+-]\d{2}:?\d{2})$/.test(s);
 
 // Splits a timestamp into IST date/time parts.
@@ -205,6 +208,8 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
   // Separate date and time
   const dateText = getDateText(invoice.createdAt ?? invoice.dateOnly);
   const timeText = getTimeText(invoice.createdAt, invoice.timeOnly);
+  // One line for the normal bill: 27/10/26 01:34 PM
+  const dateTimeText = `${dateText} ${timeText.replace(/^(\d):/, '0$1:').toUpperCase()}`.trim();
 
   // Delivery date for bulk bills: prefer the ready-made text, else format the raw date
   const deliveryTimeField = k.deliveryTime ?? k.delivery_time;
@@ -223,6 +228,10 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
 
   // Roll width is set by paperMm / bodyMm above.
   const printStyles = `
+/* on-screen preview of the normal receipt's bold header and big totals */
+.thermal-receipt .head-bold, .thermal-receipt .head-bold * { font-weight: 900; }
+.thermal-receipt .big-line, .thermal-receipt .big-line * { font-size: 17px; font-weight: 800; }
+
 @media print {
   @page {
     size: ${isThermal ? `${paperMm}mm auto` : 'A4'};
@@ -301,6 +310,18 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
   .thermal-receipt h2 { font-size: 18px !important; font-weight: 800 !important; }
   .thermal-receipt .grand { font-size: 16px !important; font-weight: 800 !important; }
   .thermal-receipt .nowrap { white-space: nowrap !important; }
+
+  /* Normal receipt only: bolder table header, bigger totals */
+  .thermal-receipt .head-bold,
+  .thermal-receipt .head-bold * {
+    font-weight: 900 !important;
+    -webkit-text-stroke: 0.3px #000;
+  }
+  .thermal-receipt .big-line,
+  .thermal-receipt .big-line * {
+    font-size: 17px !important;
+    font-weight: 800 !important;
+  }
 
   /* Dark, solid logo (forces light/colored pixels to black) */
   .thermal-receipt img.print-logo {
@@ -487,9 +508,20 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                   <p className="text-[13px] text-black text-center">
                     29/14, ஆதிசெல்வன் தெரு, அம்மாப்பேட்டை, சேலம்-3
                   </p>
-                  <p className="text-[13px] text-black text-center">
-                    தொலைபேசி: 0427-2243676 செல்: 9360013676, 9043013676
-                  </p>
+                  {isBulkBill ? (
+                    <p className="text-[13px] text-black text-center">
+                      தொலைபேசி: 0427-2243676 செல்: 9360013676, 9043013676
+                    </p>
+                  ) : (
+                    <>
+                      <p className="text-[13px] text-black text-center">
+                        செல்: 9360013676, 9043013676 தொலைபேசி: 0427-2243676
+                      </p>
+                      <p className="text-[13px] text-black text-center">
+                        FSSAI எண்: {FSSAI_NO}
+                      </p>
+                    </>
+                  )}
                 </div>
 
                 {isBulkBill ? (
@@ -606,14 +638,13 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                 {/* Bill Details */}
                 <div className="py-2.5 space-y-1 border-b border-dashed border-black text-[14px]">
                   <p className="nowrap whitespace-nowrap">பில் எண்: {getBillNo(invoice)}</p>
-                  <p className="nowrap whitespace-nowrap">தேதி: {dateText}</p>
-                  <p className="nowrap whitespace-nowrap">நேரம்: {timeText}</p>
+                  <p className="nowrap whitespace-nowrap">தேதி: {dateTimeText}</p>
                 </div>
 
                 {/* Items List */}
                 <div className="py-4 border-b border-dashed border-black">
                   {/* Header: 4 columns (item | qty | rate | amount) */}
-                  <div className="grid grid-cols-[minmax(0,1fr)_17mm_16mm_17mm] gap-x-1 font-bold pb-2 border-b border-black">
+                  <div className="head-bold grid grid-cols-[minmax(0,1fr)_17mm_16mm_17mm] gap-x-1 font-bold pb-2 border-b border-black">
                     <span className="text-left whitespace-nowrap">பொருள்</span>
                     <span className="text-left whitespace-nowrap">அளவு</span>
                     <span className="text-left whitespace-nowrap">விலை</span>
@@ -641,7 +672,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
 
                 {/* Tax & Grand Total */}
                 <div className="py-2.5 space-y-1 text-[14px] border-b border-dashed border-black">
-                  <div className="flex justify-between text-black">
+                  <div className="big-line flex justify-between text-black">
                     <span>மொத்தம்:</span>
                     <span>₹{invoice.subtotal.toLocaleString()}</span>
                   </div>
@@ -694,7 +725,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                   ) : (
                     <>
                       {/* Normal counter bill */}
-                      <div className="flex justify-between">
+                      <div className="big-line flex justify-between">
                         <span>கொடுத்தது:</span>
                         <span>₹{invoice.amountPaid.toLocaleString()}</span>
                       </div>

@@ -101,8 +101,9 @@ export const InvoicesView: React.FC<InvoicesViewProps> = ({
     .reduce((acc, i: any) => acc + Number(i.grandTotal ?? i.grand_total ?? 0), 0);
 
   // Sale -> the shape InvoiceModal understands.
-  // Every bill opened from here uses the Bulk Orders receipt layout (isBulk: true).
-  // Bulk-order sales also keep delivery, advance, balance and pack size / count.
+  // Normal sales use the normal 80mm receipt (no isBulk flag).
+  // Bulk-order sales use the Bulk Orders receipt layout (isBulk: true) and keep
+  // delivery, advance, balance and pack size / count.
   const normalizeInvoiceForModal = (inv: any) => {
     const bulk = looksBulk(inv);
 
@@ -134,7 +135,8 @@ export const InvoicesView: React.FC<InvoicesViewProps> = ({
     if (!bulk) {
       return {
         ...base,
-        isBulk: true, // same receipt layout as Bulk Orders
+        // createdAt lets the receipt print the exact date + time on one line
+        createdAt: inv.createdAt ?? inv.created_at,
         items: (inv.items || inv.sale_items || []).map((it: any) => ({
           productName: it.productName || it.product_name_snapshot || it.product_name,
           category: it.category || it.category_name || '',
