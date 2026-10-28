@@ -39,7 +39,12 @@ body {
   background: #D9B3BC;
 }
 
-/* Print styles for A4 & Thermal POS */
+/* Utility print visibility */
+.print-only {
+  display: none;
+}
+
+/* Print styles for A4, Thermal Receipts & 50x25mm Stickers */
 @media print {
   body {
     background-color: #ffffff !important;

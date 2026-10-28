@@ -31,6 +31,7 @@ import { BulkOrderFormModal } from './components/BulkOrderFormModal';
 import { DeliveryAlertsView } from './components/DeliveryAlertsView';
 import { InvoicesView } from './components/InvoicesView';
 import { InvoiceModal } from './components/InvoiceModal';
+import { ProductLabelPrintingView } from './components/ProductLabelPrintingView';
 import { GlobalSearchModal } from './components/GlobalSearchModal';
 import { ToastContainer } from './components/Toast';
 
@@ -349,6 +350,15 @@ console.log("sale",SalesData);
                   <InvoicesView
                     invoices={invoices}
                     onViewInvoice={(inv) => setSelectedInvoiceForModal(inv)}
+                  />
+                }
+              />
+              <Route
+                path="/label-printing"
+                element={
+                  <ProductLabelPrintingView
+                    products={products}
+                    onToast={(type, title, message) => addToast(title, message, type)}
                   />
                 }
               />

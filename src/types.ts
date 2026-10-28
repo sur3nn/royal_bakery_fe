@@ -4,11 +4,13 @@ export type NavigationTab =
   | 'products' 
   | 'bulk-orders' 
   | 'delivery-alerts' 
-  | 'invoices';
+  | 'invoices'
+  | 'label-printing';
 
 export interface Product {
   id: string;              // DB `id` is numeric (int) — confirm your API serializes it as string; if it returns a number, change this to `number` and update all `String(id)` comparisons in App.tsx/ProductsView accordingly
   code: string;             // no matching column in your schema screenshot — confirm this is generated client-side only, not persisted
+  barcode?: string;         // optional barcode string if provided separately
   name: string;
   category: string;         // was a fixed union; now driven by CategoriesData (product_categories.name) — no longer a compile-time-checkable set
   categoryId?: number;      // optional: keep the resolved category_id around if you want to avoid re-matching by name elsewhere
@@ -22,6 +24,22 @@ export interface Product {
   hsnCode?: string;         // NOT a real column right now — see note below
   shelfLifeDays?: number;   // real column (shelf_life_days), not currently in your form
   isHighDemand?: boolean;
+}
+
+export interface LabelPrintItem {
+  product: Product;
+  copies: number;
+}
+
+export interface LabelPrintOptions {
+  shopName: string;
+  showShopName: boolean;
+  showPrice: boolean;
+  showBarcode: boolean;
+  showSkuText: boolean;
+  showPackedDate: boolean;
+  showWeightUnit: boolean;
+  packedDate: string;
 }
 
 export interface CartItem {

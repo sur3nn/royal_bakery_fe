@@ -12,7 +12,8 @@ import {
   Cake,
   X,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  Tag
 } from 'lucide-react';
 import { NavigationTab } from '../types';
 import {sidebar as ta}  from '../components/Bakerylabels'
@@ -84,6 +85,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       id: 'invoices' as NavigationTab,
       label: S.nav['invoices'],
       icon: FileText,
+      badge: null,
+    },
+    {
+      id: 'label-printing' as NavigationTab,
+      label: (S.nav as any)['label-printing'] || 'லேபிள் அச்சிடுதல்',
+      icon: Tag,
       badge: null,
     },
   ];

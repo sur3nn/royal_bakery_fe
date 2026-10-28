@@ -361,7 +361,8 @@ export const sidebar = {
       "products": "பொருட்கள்",
       "bulk-orders": "மொத்த ஆர்டர்கள்",
       "delivery-alerts": "டெலிவரி அறிவிப்புகள்",
-      "invoices": "பில் விவரங்கள்"
+      "invoices": "பில் விவரங்கள்",
+      "label-printing": "லேபிள் அச்சிடுதல்"
     },
     "badgeLow": "குறைவு",
     "badgeDueSoon": "விரைவில்",
