@@ -10,6 +10,12 @@ interface BarcodeStickerProps {
   isA4Sheet?: boolean;
 }
 
+// TEST MODE: true = always print the static English text below.
+// Set to false once printing works to use real product / shop names again.
+const USE_STATIC_ENGLISH = true;
+const STATIC_SHOP_NAME = 'ROYAL SWEETS';
+const STATIC_PRODUCT_NAME = 'ALMOND CAKE';
+
 export const BarcodeSticker: React.FC<BarcodeStickerProps> = ({
   product,
   options,
@@ -18,17 +24,21 @@ export const BarcodeSticker: React.FC<BarcodeStickerProps> = ({
   isPrint = false,
   isA4Sheet = false,
 }) => {
-  // Exactly 50mm wide x 25mm high for 2-column thermal label roll
+  const shopName = USE_STATIC_ENGLISH ? STATIC_SHOP_NAME : options.shopName || 'ROYAL SWEETS';
+  const productName = USE_STATIC_ENGLISH ? STATIC_PRODUCT_NAME : product.name;
+  const showShop = USE_STATIC_ENGLISH ? true : options.showShopName;
+
+  // Exactly 50mm wide x 25mm high. All print-critical styles are inline
+  // (no Tailwind breakpoints, no truncate, no letter-spacing, no line-clamp).
   return (
     <div
-      className={`label-sticker-page bg-white text-black box-border flex flex-col justify-start overflow-hidden select-none ${
-        isPrint
-          ? isA4Sheet
-            ? 'border border-neutral-300 rounded-[1mm]'
-            : 'border border-transparent'
-          : 'relative rounded-[1.5mm] border border-gray-300 shadow-xs'
-      } ${className}`}
+      className={`label-sticker-page ${className}`}
       style={{
+        boxSizing: 'border-box',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        userSelect: 'none',
         width: '50mm',
         height: '25mm',
         maxWidth: '50mm',
@@ -36,55 +46,86 @@ export const BarcodeSticker: React.FC<BarcodeStickerProps> = ({
         minWidth: '50mm',
         minHeight: '25mm',
         padding: '0.8mm 1.5mm 0.5mm 1.5mm',
+        position: 'relative',
         transform: !isPrint && previewScale !== 1.0 ? `scale(${previewScale})` : undefined,
         transformOrigin: 'top left',
-        fontFamily: "'Plus Jakarta Sans', system-ui, -apple-system, sans-serif",
+        fontFamily: 'Arial, Helvetica, sans-serif',
         color: '#000000',
         backgroundColor: '#ffffff',
+        border: isPrint
+          ? isA4Sheet
+            ? '0.2mm solid #d4d4d4'
+            : 'none'
+          : '1px solid #d1d5db',
+        borderRadius: isPrint && !isA4Sheet ? 0 : '1mm',
+        pageBreakInside: 'avoid',
+        breakInside: 'avoid',
         WebkitPrintColorAdjust: 'exact',
         printColorAdjust: 'exact',
       }}
     >
       {/* 1. Header: Shop Name */}
-      {options.showShopName && (
+      {showShop && (
         <div
-          className="w-full flex items-center justify-center leading-none border-b border-black/20 pb-[0.5mm] shrink-0"
-          style={{ borderColor: 'rgba(0,0,0,0.2)' }}
+          style={{
+            width: '100%',
+            height: '5mm',
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderBottom: '0.2mm solid #000000',
+            paddingBottom: '0.5mm',
+            boxSizing: 'border-box',
+            overflow: 'hidden',
+          }}
         >
           <span
-            className="text-[7.5pt] font-black tracking-wider uppercase text-center truncate text-black"
-            style={{ color: '#000000', letterSpacing: '0.03em' }}
+            style={{
+              fontSize: '7.5pt',
+              fontWeight: 900,
+              lineHeight: 1,
+              textTransform: 'uppercase',
+              textAlign: 'center',
+              whiteSpace: 'nowrap',
+              color: '#000000',
+            }}
           >
-            {options.shopName || 'ROYAL SWEETS'}
+            {shopName}
           </span>
         </div>
       )}
 
-      {/* 2. Center: Large, prominent Product Name strictly center aligned */}
+      {/* 2. Center: Product Name */}
       <div
-        className="label-product-name-box w-full flex-1 flex items-center justify-center px-[0.5mm] py-0 overflow-hidden text-center"
+        className="label-product-name-box"
         style={{
-          textAlign: 'center',
-          justifyContent: 'center',
-          alignItems: 'center',
           width: '100%',
+          flex: 1,
+          minHeight: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          overflow: 'hidden',
+          textAlign: 'center',
         }}
       >
         <div
-          className="label-product-name-text text-[13pt] sm:text-[14.5pt] font-black leading-[1.15] text-center line-clamp-2 break-words text-black"
+          className="label-product-name-text"
           style={{
-            color: '#000000',
-            textAlign: 'center',
             width: '100%',
-            margin: '0 auto',
-            display: 'block',
+            fontSize: '13pt', // fixed: same on screen and in print
+            fontWeight: 900,
+            lineHeight: 1.15,
+            textAlign: 'center',
+            wordBreak: 'break-word',
+            color: '#000000',
           }}
-          title={product.name}
+          title={productName}
         >
-          {product.name}
+          {productName}
         </div>
       </div>
     </div>
   );
 };
-
