@@ -200,9 +200,9 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
   // Slips are always thermal
   const isThermal = isKot || printMode === 'thermal';
 
-  // Bulk order bill uses a wider roll: 80mm + 25mm = 105mm (print area is 2mm narrower)
+  // Bills (normal and bulk) use a 105mm roll (print area is 2mm narrower); kitchen / packing slips stay 80mm
   const isBulkBill = !!k.isBulk && !isKot;
-  const paperMm = isBulkBill ? 105 : 80;
+  const paperMm = isKot ? 80 : 105;
   const bodyMm = paperMm - 2;
 
   // Separate date and time
@@ -230,6 +230,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
   const printStyles = `
 /* on-screen preview of the normal receipt's bold header and big totals */
 .thermal-receipt .head-bold, .thermal-receipt .head-bold * { font-weight: 900; }
+.thermal-receipt .head-compact, .thermal-receipt .head-compact * { font-size: 12px; }
 .thermal-receipt .big-line, .thermal-receipt .big-line * { font-size: 17px; font-weight: 800; }
 
 @media print {
@@ -321,6 +322,10 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
   .thermal-receipt .big-line * {
     font-size: 17px !important;
     font-weight: 800 !important;
+  }
+  .thermal-receipt .head-compact,
+  .thermal-receipt .head-compact * {
+    font-size: 12px !important;
   }
 
   /* Dark, solid logo (forces light/colored pixels to black) */
@@ -491,7 +496,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
               </div>
             ) : (
               /* ================= THERMAL 80mm RECEIPT LAYOUT ================= */
-              <div className={`print-area thermal-receipt ${isBulkBill ? 'max-w-[525px]' : 'max-w-[400px]'} mx-auto bg-white p-5 border border-[#EDE2E5] shadow-sm rounded-xl font-mono text-[14px] text-black`}>
+              <div className={`print-area thermal-receipt max-w-[525px] mx-auto bg-white p-5 border border-[#EDE2E5] shadow-sm rounded-xl font-mono text-[14px] text-black`}>
                 {/* Brand Header */}
                 <div className="text-center space-y-1 pb-3 border-b border-dashed border-black">
                   <div className="flex items-center justify-center mx-auto mb-1">
@@ -649,7 +654,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                 {/* Items List */}
                 <div className="py-4 border-b border-dashed border-black">
                   {/* Header: 5 columns (no | item | qty | rate | amount) */}
-                  <div className="head-bold grid grid-cols-[8mm_minmax(0,1fr)_14mm_14mm_16mm] gap-x-1 font-bold pb-2 border-b border-black">
+                  <div className="head-bold grid grid-cols-[10mm_minmax(0,1fr)_17mm_14mm_17mm] gap-x-1.5 font-bold pb-2 border-b border-black">
                     <span className="text-left whitespace-nowrap">எண்</span>
                     <span className="text-left whitespace-nowrap">பொருள்</span>
                     <span className="text-left whitespace-nowrap">அளவு</span>
@@ -660,17 +665,17 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                   {/* Rows: name (wraps to 2+ lines in its column) with qty / rate / amount on the first line */}
                   <div className="space-y-3.5 pt-2.5">
                     {invoice.items.map((it, idx) => (
-                      <div key={idx} className="grid grid-cols-[8mm_minmax(0,1fr)_14mm_14mm_16mm] gap-x-1 items-start tabular-nums">
+                      <div key={idx} className="grid grid-cols-[10mm_minmax(0,1fr)_17mm_14mm_17mm] gap-x-1.5 items-start tabular-nums">
                         <span className="text-left whitespace-nowrap">{idx + 1}</span>
                         <p className="font-bold text-black whitespace-normal break-words">{it.productName}</p>
                         <span className="text-left whitespace-nowrap">
                           {it.quantity} {it.unit}
                         </span>
-                        <span className="text-right whitespace-nowrap">
-                          ₹{it.price.toLocaleString()}
+                        <span className="text-left whitespace-nowrap">
+                          {it.price.toLocaleString()}
                         </span>
-                        <span className="text-right font-bold whitespace-nowrap">
-                          ₹{it.total.toLocaleString()}
+                        <span className="text-left font-bold whitespace-nowrap">
+                          {it.total.toLocaleString()}
                         </span>
                       </div>
                     ))}
