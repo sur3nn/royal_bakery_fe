@@ -23,7 +23,7 @@ import {
   Info,
   Plus,
   Minus,
-  LayoutGrid
+  Columns2
 } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../redux/store';
@@ -64,7 +64,7 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
   const [copiesMap, setCopiesMap] = useState<Record<string, number>>({});
   const [bulkCopyCount, setBulkCopyCount] = useState<number>(2);
 
-  // Auto-select products by default when products load so preview & print are NEVER empty
+  // Auto-select products by default when products load so preview & print are ready
   useEffect(() => {
     if (effectiveProducts.length > 0 && selectedProductIds.size === 0) {
       const initialIds = new Set<string>();
@@ -79,25 +79,24 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
     }
   }, [effectiveProducts.length]);
 
-  // Print Format Layout: 'a4-sheet' (4 columns grid) vs 'thermal-roll' (single label roll)
-  const [printLayout, setPrintLayout] = useState<'a4-sheet' | 'thermal-roll'>('a4-sheet');
+  // Print Format Layout: 'thermal-roll-2col' (2 labels side-by-side on thermal roll) vs 'a4-sheet-2col'
+  const [printLayout, setPrintLayout] = useState<'thermal-roll-2col' | 'a4-sheet-2col'>('thermal-roll-2col');
 
-  // Sticker Customization Options
+  // Sticker Customization Options (Clean Product Label: Shop Name + Product Name)
   const todayIso = new Date().toISOString().split('T')[0];
   const [options, setOptions] = useState<LabelPrintOptions>({
     shopName: ta?.shop?.name || 'கனகராஜ் ஸ்வீட்ஸ்',
     showShopName: true,
-    showPrice: true,
+    showPrice: false,
     showBarcode: false,
     showSkuText: false,
-    showPackedDate: true,
-    showWeightUnit: true,
+    showPackedDate: false,
+    showWeightUnit: false,
     packedDate: todayIso,
   });
 
   // UI Views: Zoom, Preview Modes, Modals
-  const [previewZoom, setPreviewZoom] = useState<number>(1.4);
-  const [previewIndex, setPreviewIndex] = useState<number>(0);
+  const [previewZoom, setPreviewZoom] = useState<number>(1.25);
   const [showFullPreviewModal, setShowFullPreviewModal] = useState(false);
   const [showPrinterHelpModal, setShowPrinterHelpModal] = useState(false);
 
@@ -147,19 +146,23 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
         list.push(item.product);
       }
     });
-    // Safety fallback: if user deselected everything, still provide first product so print is never empty
     if (list.length === 0 && effectiveProducts.length > 0) {
       list.push(effectiveProducts[0]);
     }
     return list;
   }, [selectedItems, effectiveProducts]);
 
-  // Keep preview index in bounds
-  useEffect(() => {
-    if (previewIndex >= selectedItems.length) {
-      setPreviewIndex(Math.max(0, selectedItems.length - 1));
+  // Group stickers into 2-column rows for thermal roll printing
+  const stickerRows: { col1: Product; col2?: Product }[] = useMemo(() => {
+    const rows: { col1: Product; col2?: Product }[] = [];
+    for (let i = 0; i < flattenedStickers.length; i += 2) {
+      rows.push({
+        col1: flattenedStickers[i],
+        col2: flattenedStickers[i + 1] || undefined,
+      });
     }
-  }, [selectedItems.length, previewIndex]);
+    return rows;
+  }, [flattenedStickers]);
 
   // Selection handlers
   const handleToggleSelectProduct = (productId: string) => {
@@ -237,11 +240,9 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
     window.print();
   };
 
-  // Preview current product sticker
-  const activePreviewProduct = selectedItems[previewIndex]?.product || effectiveProducts[0];
-
-  // A4 sheet calculations
-  const a4SheetsEstimate = Math.ceil(flattenedStickers.length / 44) || 1;
+  // Preview first pair of products
+  const previewCol1 = stickerRows[0]?.col1 || effectiveProducts[0];
+  const previewCol2 = stickerRows[0]?.col2 || effectiveProducts[1] || effectiveProducts[0];
 
   return (
     <div className="space-y-6 pb-20">
@@ -250,14 +251,14 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
         <div>
           <div className="flex items-center gap-2.5">
             <span className="p-2.5 rounded-xl bg-[#FFF4F6] text-[#C94F6D] border border-[#C94F6D]/20">
-              <Tag className="w-6 h-6" />
+              <Columns2 className="w-6 h-6" />
             </span>
             <div>
               <h1 className="text-2xl sm:text-3xl font-extrabold text-[#29252A] tracking-tight">
-                பொருள் பாக்ஸ் லேபிள் அச்சிடுதல் (Product Sticker Printing)
+                பொருள் பாக்ஸ் லேபிள் அச்சிடுதல் (2-Column Thermal Roll)
               </h1>
               <p className="text-xs sm:text-sm text-[#756B70] mt-0.5">
-                50 mm × 25 mm தரநிலையான பாக்ஸ் ஸ்டிக்கர் லேபிள்கள் (A4 தாள் பல வரிசைகள் & தெர்மல் ரோல்)
+                தெர்மல் ரோல் அடிப்படையிலான 2 நெடுவரிசை லேபிள்கள் (2-Up Thermal Label Roll • 50 mm × 25 mm)
               </p>
             </div>
           </div>
@@ -265,31 +266,31 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
 
         {/* Right Header Stats, Layout Selector & Main CTAs */}
         <div className="flex flex-wrap items-center gap-3">
-          {/* Format Switcher: A4 Sheet Grid vs Thermal Roll */}
+          {/* Format Switcher: 2-Column Thermal Roll vs 2-Column A4 */}
           <div className="flex items-center bg-[#FFF9F5] p-1 rounded-xl border border-[#EDE2E5] text-xs font-bold">
             <button
               type="button"
-              onClick={() => setPrintLayout('a4-sheet')}
+              onClick={() => setPrintLayout('thermal-roll-2col')}
               className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-                printLayout === 'a4-sheet'
-                  ? 'bg-[#C94F6D] text-white shadow-2xs'
-                  : 'text-[#756B70] hover:text-[#C94F6D]'
-              }`}
-            >
-              <LayoutGrid className="w-3.5 h-3.5" />
-              <span>A4 தாள் (Grid)</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setPrintLayout('thermal-roll')}
-              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-                printLayout === 'thermal-roll'
+                printLayout === 'thermal-roll-2col'
                   ? 'bg-[#C94F6D] text-white shadow-2xs'
                   : 'text-[#756B70] hover:text-[#C94F6D]'
               }`}
             >
               <Tag className="w-3.5 h-3.5" />
-              <span>தெர்மல் ரோல் (Single)</span>
+              <span>தெர்மல் ரோல் (2 Column)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setPrintLayout('a4-sheet-2col')}
+              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                printLayout === 'a4-sheet-2col'
+                  ? 'bg-[#C94F6D] text-white shadow-2xs'
+                  : 'text-[#756B70] hover:text-[#C94F6D]'
+              }`}
+            >
+              <Columns2 className="w-3.5 h-3.5" />
+              <span>A4 தாள் (2 Column)</span>
             </button>
           </div>
 
@@ -313,7 +314,7 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 border-[#C94F6D] text-[#C94F6D] font-bold text-sm hover:bg-[#FFF4F6] transition-all cursor-pointer shadow-2xs"
           >
             <Eye className="w-4 h-4" />
-            <span>முழு முன்னோட்டம் ({flattenedStickers.length})</span>
+            <span>முழு ரோல் ({flattenedStickers.length})</span>
           </button>
 
           <button
@@ -358,7 +359,7 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
                 <Check className="w-3.5 h-3.5" />
                 <span>{selectedProductIds.size} பொருட்கள் தேர்வு</span>
                 <span className="text-gray-300">|</span>
-                <span>{flattenedStickers.length} லேபிள்கள்</span>
+                <span>{flattenedStickers.length} லேபிள்கள் ({stickerRows.length} வரிசைகள்)</span>
               </div>
             </div>
 
@@ -587,22 +588,22 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
           </div>
         </div>
 
-        {/* Right Column (xl:col-span-5): Sticker Preview & Customization Options */}
+        {/* Right Column (xl:col-span-5): 2-Column Thermal Roll Preview & Customization Options */}
         <div className="xl:col-span-5 space-y-5 sticky top-20">
-          {/* Live Thermal / A4 Sticker Preview Box */}
+          {/* Live 2-Column Thermal Roll Preview Box */}
           <div className="bg-white p-5 rounded-2xl border border-[#EDE2E5] shadow-xs space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-[#EDE2E5]">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
                 <h2 className="text-sm font-extrabold text-[#29252A] uppercase tracking-wider">
-                  நேரடி முன்னோட்டம் (Live Preview)
+                  நேரடி 2-வரிசை ரோல் முன்னோட்டம் (2-Up Roll)
                 </h2>
               </div>
 
               {/* Zoom Buttons */}
               <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg text-xs font-semibold">
                 <button
-                  onClick={() => setPreviewZoom((z) => Math.max(1.0, Number((z - 0.2).toFixed(2))))}
+                  onClick={() => setPreviewZoom((z) => Math.max(0.9, Number((z - 0.15).toFixed(2))))}
                   className="p-1 rounded hover:bg-white text-gray-700 cursor-pointer"
                   title="Zoom Out"
                 >
@@ -612,7 +613,7 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
                   {Math.round(previewZoom * 100)}%
                 </span>
                 <button
-                  onClick={() => setPreviewZoom((z) => Math.min(2.2, Number((z + 0.2).toFixed(2))))}
+                  onClick={() => setPreviewZoom((z) => Math.min(1.8, Number((z + 0.15).toFixed(2))))}
                   className="p-1 rounded hover:bg-white text-gray-700 cursor-pointer"
                   title="Zoom In"
                 >
@@ -621,33 +622,43 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
               </div>
             </div>
 
-            {/* Sticker Preview Mount Area */}
-            <div className="bg-gradient-to-br from-[#FAEDE4]/40 via-white to-[#FFF4F6]/40 p-6 rounded-xl border border-dashed border-[#C94F6D]/30 flex flex-col items-center justify-center min-h-[220px] overflow-hidden relative">
-              {activePreviewProduct ? (
+            {/* Simulated 2-Column Thermal Label Roll Carrier */}
+            <div className="bg-gradient-to-b from-[#FFFDF0] via-[#FFFBEB] to-[#FFFDF0] p-4 sm:p-5 rounded-xl border border-[#E5E0C0] flex flex-col items-center justify-center min-h-[220px] overflow-hidden relative shadow-inner">
+              <div className="text-[10px] font-bold text-amber-800/60 uppercase tracking-widest mb-3 flex items-center gap-2">
+                <span>← 50 mm (Col 1) →</span>
+                <span className="text-amber-500">•</span>
+                <span>← 50 mm (Col 2) →</span>
+              </div>
+
+              {previewCol1 ? (
                 <div className="relative z-10 flex flex-col items-center">
-                  {/* Single Sticker Card */}
+                  {/* Pair of 2 stickers side by side on the thermal roll */}
                   <div
                     style={{
-                      width: `${50 * previewZoom}mm`,
-                      height: `${25 * previewZoom}mm`,
+                      transform: `scale(${previewZoom})`,
+                      transformOrigin: 'center center',
                     }}
-                    className="transition-all duration-150 drop-shadow-md"
+                    className="flex items-center gap-2 transition-all duration-150 drop-shadow-md my-2"
                   >
                     <BarcodeSticker
-                      product={activePreviewProduct}
+                      product={previewCol1}
                       options={options}
-                      previewScale={previewZoom}
-                      isA4Sheet={printLayout === 'a4-sheet'}
+                      previewScale={1.0}
+                      isA4Sheet={false}
+                    />
+                    <BarcodeSticker
+                      product={previewCol2}
+                      options={options}
+                      previewScale={1.0}
+                      isA4Sheet={false}
                     />
                   </div>
 
                   {/* Physical ruler tag */}
-                  <div className="mt-3 flex items-center gap-2 text-[10px] font-mono text-gray-600 bg-white/95 px-3 py-1 rounded-full border border-gray-200 shadow-2xs">
-                    <span>அளவு: 50.0 mm × 25.0 mm</span>
+                  <div className="mt-4 flex items-center gap-2 text-[10px] font-mono text-gray-700 bg-white/95 px-3 py-1 rounded-full border border-gray-200 shadow-2xs">
+                    <span>அளவு: 2 நெடுவரிசை • 104 mm × 25 mm ரோல்</span>
                     <span>•</span>
-                    <span className="text-[#C94F6D] font-bold">
-                      {printLayout === 'a4-sheet' ? 'A4 தாள் பல வரிசைகள் (4 Cols)' : 'தனி லேபிள் ரோல்'}
-                    </span>
+                    <span className="text-[#C94F6D] font-bold">2-Up Thermal Roll</span>
                   </div>
                 </div>
               ) : (
@@ -658,28 +669,9 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
               )}
             </div>
 
-            {/* Carousel navigation if multiple products selected */}
-            {selectedItems.length > 1 && (
-              <div className="flex items-center justify-between pt-2 text-xs text-[#756B70]">
-                <button
-                  onClick={() => setPreviewIndex((i) => (i > 0 ? i - 1 : selectedItems.length - 1))}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-gray-200 hover:bg-gray-100 cursor-pointer font-medium"
-                >
-                  <ChevronLeft className="w-3.5 h-3.5" />
-                  <span>முந்தையது</span>
-                </button>
-                <span className="font-semibold text-[#29252A]">
-                  பொருள் {previewIndex + 1} / {selectedItems.length}
-                </span>
-                <button
-                  onClick={() => setPreviewIndex((i) => (i < selectedItems.length - 1 ? i + 1 : 0))}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-gray-200 hover:bg-gray-100 cursor-pointer font-medium"
-                >
-                  <span>அடுத்தது</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            )}
+            <p className="text-[11px] text-gray-500 text-center">
+              ஒவ்வொரு வரிசையிலும் பக்கவாட்டில் 2 லேபிள்கள் அச்சிடப்படும் (2 stickers per feed across the roll).
+            </p>
           </div>
 
           {/* Sticker Customization Options Card */}
@@ -687,7 +679,7 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
             <div className="flex items-center gap-2 pb-2 border-b border-[#EDE2E5]">
               <Sliders className="w-4 h-4 text-[#C94F6D]" />
               <h3 className="text-sm font-extrabold text-[#29252A]">
-                லேபிள் அமைப்புகள் & விபரங்கள் (Label Options)
+                லேபிள் அமைப்புகள் (Label Options)
               </h3>
             </div>
 
@@ -703,19 +695,8 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
               />
             </div>
 
-            {/* Packing Date Selector */}
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-gray-700">பேக் செய்த தேதி (Packed Date):</label>
-              <input
-                type="date"
-                value={options.packedDate}
-                onChange={(e) => setOptions({ ...options, packedDate: e.target.value })}
-                className="w-full px-3 py-1.5 text-xs rounded-xl border border-[#EDE2E5] text-[#29252A] focus:outline-none focus:border-[#C94F6D]"
-              />
-            </div>
-
-            {/* Toggle Switches */}
-            <div className="grid grid-cols-2 gap-2.5 pt-2 text-xs">
+            {/* Brand Toggle Switch */}
+            <div className="pt-1 text-xs">
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <input
                   type="checkbox"
@@ -723,84 +704,40 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
                   onChange={(e) => setOptions({ ...options, showShopName: e.target.checked })}
                   className="rounded text-[#C94F6D] focus:ring-[#C94F6D]"
                 />
-                <span className="font-semibold text-gray-700">கடை பெயர் (Brand)</span>
+                <span className="font-semibold text-gray-700">கடை பெயர் காட்டுக (Show Brand Header)</span>
               </label>
+            </div>
 
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={options.showPrice}
-                  onChange={(e) => setOptions({ ...options, showPrice: e.target.checked })}
-                  className="rounded text-[#C94F6D] focus:ring-[#C94F6D]"
-                />
-                <span className="font-semibold text-gray-700">விற்பனை விலை (MRP)</span>
-              </label>
-
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={options.showPackedDate}
-                  onChange={(e) => setOptions({ ...options, showPackedDate: e.target.checked })}
-                  className="rounded text-[#C94F6D] focus:ring-[#C94F6D]"
-                />
-                <span className="font-semibold text-gray-700">பேக்கிங் தேதி (Pkd)</span>
-              </label>
-
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={options.showWeightUnit}
-                  onChange={(e) => setOptions({ ...options, showWeightUnit: e.target.checked })}
-                  className="rounded text-[#C94F6D] focus:ring-[#C94F6D]"
-                />
-                <span className="font-semibold text-gray-700">அளவீட்டு அலகு (Kg/Pcs)</span>
-              </label>
+            {/* Clean Label Info Notice */}
+            <div className="p-3 bg-amber-50/70 rounded-xl border border-amber-200/60 text-[11px] text-amber-900 flex items-start gap-2">
+              <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <span>
+                <b>சுத்தமான லேபிள் வடிவம்:</b> MRP விலை, பேக்கிங் தேதி மற்றும் எடை அலகு நீக்கப்பட்டு கடையின் பெயர் மற்றும் பெரிய தடிமனான பொருளின் பெயர் மட்டுமே ஸ்டிக்கரில் அச்சிடப்படும்.
+              </span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 3. Fullscreen / Modal Preview of all generated stickers */}
+      {/* 3. Fullscreen / Modal Preview of 2-Column Thermal Roll */}
       {showFullPreviewModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[92vh] flex flex-col shadow-2xl border border-[#EDE2E5] overflow-hidden">
+          <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[92vh] flex flex-col shadow-2xl border border-[#EDE2E5] overflow-hidden">
             {/* Modal Header */}
             <div className="px-5 py-4 bg-gradient-to-r from-white to-[#FFF9F5] border-b border-[#EDE2E5] flex items-center justify-between gap-3">
               <div className="flex items-center gap-2.5">
                 <Printer className="w-5 h-5 text-[#C94F6D]" />
                 <div>
                   <h3 className="font-extrabold text-base text-[#29252A]">
-                    லேபிள் முன்னோட்டம் & அச்சுப் பட்டியல் ({flattenedStickers.length} லேபிள்கள்)
+                    2-வரிசை தெர்மல் ரோல் முன்னோட்டம் ({flattenedStickers.length} லேபிள்கள் • {stickerRows.length} வரிசைகள்)
                   </h3>
                   <p className="text-xs text-[#756B70]">
-                    {printLayout === 'a4-sheet'
-                      ? 'A4 தாள் பல வரிசைகள் முன்னோட்டம் (4 வரிசைகள் - Grid Layout)'
-                      : '50 × 25 mm தனி தெர்மல் லேபிள் ரோல் முன்னோட்டம்'}
+                    2-Up Thermal Label Roll (104 mm × 25 mm Feed • 2 Columns Side-by-Side)
                   </p>
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
-                {/* Modal Layout toggle */}
-                <div className="hidden sm:flex items-center bg-gray-100 p-0.5 rounded-lg text-xs font-semibold">
-                  <button
-                    onClick={() => setPrintLayout('a4-sheet')}
-                    className={`px-2.5 py-1 rounded-md cursor-pointer ${
-                      printLayout === 'a4-sheet' ? 'bg-white shadow-2xs text-[#C94F6D]' : 'text-gray-600'
-                    }`}
-                  >
-                    A4 Grid
-                  </button>
-                  <button
-                    onClick={() => setPrintLayout('thermal-roll')}
-                    className={`px-2.5 py-1 rounded-md cursor-pointer ${
-                      printLayout === 'thermal-roll' ? 'bg-white shadow-2xs text-[#C94F6D]' : 'text-gray-600'
-                    }`}
-                  >
-                    Roll
-                  </button>
-                </div>
-
                 <button
                   onClick={handlePrint}
                   className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#C94F6D] text-white font-bold text-xs hover:brightness-105 active:scale-95 transition-all cursor-pointer shadow-xs"
@@ -817,81 +754,69 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
               </div>
             </div>
 
-            {/* Modal Body: Multi-Sticker Grid / A4 Sheet Visualizer */}
-            <div className="p-6 overflow-y-auto max-h-[calc(92vh-130px)] bg-[#FAFAFA] space-y-6">
-              {/* Sheet summary banner */}
-              <div className="p-3.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+            {/* Modal Body: Realistic 2-Column Continuous Thermal Roll */}
+            <div className="p-6 overflow-y-auto max-h-[calc(92vh-130px)] bg-[#F5F5F0] space-y-4 flex flex-col items-center">
+              {/* Roll length estimate box */}
+              <div className="w-full max-w-[550px] p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2">
-                  <Info className="w-4 h-4 text-blue-600 shrink-0" />
+                  <Info className="w-4 h-4 text-amber-700 shrink-0" />
                   <span>
-                    மொத்த லேபிள்கள்: <b>{flattenedStickers.length} எண்ணிக்கை</b> • வடிவம்:{' '}
-                    <b>{printLayout === 'a4-sheet' ? `A4 தாள் (${a4SheetsEstimate} தாள் தோராயமாக)` : 'தனி தெர்மல் லேபிள் ரோல்'}</b>
+                    மொத்த லேபிள்கள்: <b>{flattenedStickers.length}</b> • வரிசைகள்: <b>{stickerRows.length} ரோல் ஃபீட்</b>
                   </span>
                 </div>
-                <span className="font-mono font-bold text-blue-700">
-                  {printLayout === 'a4-sheet' ? 'A4 Paper (4 Cols × 11 Rows)' : '50mm × 25mm Continuous Roll'}
-                </span>
+                <span className="font-mono font-bold text-amber-800">104 mm × 25 mm Roll</span>
               </div>
 
-              {/* Realistic Container */}
-              {printLayout === 'a4-sheet' ? (
-                /* Simulated A4 Paper with multi-column wrapping */
-                <div className="max-w-[800px] mx-auto bg-white p-6 sm:p-8 rounded-xl border border-gray-300 shadow-md">
-                  <div className="text-center text-[11px] font-bold text-gray-400 mb-4 uppercase tracking-widest border-b border-gray-100 pb-2">
-                    A4 Sheet Paper Preview (4 Columns Grid • Wraps Automatically)
-                  </div>
-                  <div className="flex flex-wrap gap-2.5 sm:gap-3 justify-start items-start">
-                    {flattenedStickers.map((product, idx) => (
-                      <div key={`${product.id}-${idx}`} className="flex flex-col items-center">
-                        <div
-                          style={{
-                            width: '48mm',
-                            height: '24.5mm',
-                          }}
-                          className="drop-shadow-xs transition-transform hover:scale-105"
-                        >
-                          <BarcodeSticker
-                            product={product}
-                            options={options}
-                            previewScale={1.0}
-                            isA4Sheet={true}
-                          />
-                        </div>
-                        <span className="text-[9px] font-mono text-gray-400 mt-0.5">#{idx + 1}</span>
-                      </div>
-                    ))}
-                  </div>
+              {/* Realistic 2-column continuous thermal label backing paper */}
+              <div className="w-full max-w-[550px] bg-[#FFFBEB] p-5 sm:p-6 rounded-2xl border-x-4 border-dashed border-[#D6CDA4] shadow-md flex flex-col items-center gap-3">
+                <div className="text-[10px] font-bold text-amber-800/50 uppercase tracking-widest pb-1 border-b border-amber-200/60 w-full text-center">
+                  2-Up Continuous Thermal Sticker Paper
                 </div>
-              ) : (
-                /* Thermal Roll Preview */
-                <div className="flex flex-wrap gap-4 justify-center items-start">
-                  {flattenedStickers.map((product, idx) => (
-                    <div key={`${product.id}-${idx}`} className="flex flex-col items-center gap-1">
-                      <span className="text-[10px] font-mono text-gray-400">#{idx + 1}</span>
-                      <div
-                        style={{
-                          width: '50mm',
-                          height: '25mm',
-                        }}
-                        className="drop-shadow-sm transition-transform hover:scale-105"
-                      >
+
+                {stickerRows.map((row, idx) => (
+                  <div key={`modal-row-${idx}`} className="flex flex-col items-center w-full">
+                    <div className="flex items-center justify-between w-full text-[9px] font-mono text-amber-800/40 px-2 pb-0.5">
+                      <span>வரிசை #{idx + 1}</span>
+                      <span>25 mm feed</span>
+                    </div>
+
+                    <div className="flex items-center justify-center gap-3 w-full">
+                      <div className="drop-shadow-xs">
                         <BarcodeSticker
-                          product={product}
+                          product={row.col1}
                           options={options}
                           previewScale={1.0}
                           isA4Sheet={false}
                         />
                       </div>
+
+                      {row.col2 ? (
+                        <div className="drop-shadow-xs">
+                          <BarcodeSticker
+                            product={row.col2}
+                            options={options}
+                            previewScale={1.0}
+                            isA4Sheet={false}
+                          />
+                        </div>
+                      ) : (
+                        <div
+                          style={{ width: '50mm', height: '25mm' }}
+                          className="border border-dashed border-amber-300 rounded-[1.5mm] flex items-center justify-center text-[10px] text-amber-500/50"
+                        >
+                          (Empty)
+                        </div>
+                      )}
                     </div>
-                  ))}
-                </div>
-              )}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* 4. Thermal & A4 Printer Setup Help Modal */}
+      {/* 4. Thermal Printer Setup Help Modal */}
       {showPrinterHelpModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-xs animate-in fade-in">
           <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl border border-[#EDE2E5] overflow-hidden p-6 space-y-5">
@@ -899,7 +824,7 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
               <div className="flex items-center gap-2">
                 <Printer className="w-5 h-5 text-[#C94F6D]" />
                 <h3 className="font-extrabold text-base text-[#29252A]">
-                  பிரிண்டர் அமைப்புகள் (Printer Setup Guide)
+                  2-வரிசை தெர்மல் பிரிண்டர் அமைப்புகள்
                 </h3>
               </div>
               <button
@@ -911,26 +836,21 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
             </div>
 
             <div className="space-y-4 text-xs text-[#29252A]">
-              {/* A4 Sheet Guide */}
-              <div className="p-3 bg-blue-50 rounded-xl border border-blue-200 text-blue-900 space-y-1.5">
-                <p className="font-bold">1. A4 தாள் ஸ்டிக்கர் (A4 Sticker Sheet - 4 Columns):</p>
-                <ul className="list-disc list-inside space-y-0.5 text-[11px]">
-                  <li>தாள் அளவு (Paper Size): <b>A4</b></li>
-                  <li>விளிம்புகள் (Margins): <b>Default</b> அல்லது <b>Minimum (5 mm)</b></li>
-                  <li>அளவீடு (Scale): <b>100%</b> அல்லது <b>Fit to Printable Area</b></li>
+              <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 space-y-1.5">
+                <p className="font-bold">2-நெடுவரிசை தெர்மல் ரோல் (2-Up Thermal Roll • 50 mm × 25 mm):</p>
+                <ul className="list-disc list-inside space-y-1 text-[11px]">
+                  <li>தாள் அகலம் (Paper Width): <b>104 mm</b> (2 labels: 50mm + 50mm + 4mm gap)</li>
+                  <li>தாள் உயரம் (Label Height): <b>25 mm</b></li>
+                  <li>விளிம்புகள் (Margins): <b>None (0 mm)</b></li>
+                  <li>அளவீடு (Scale): <b>100%</b></li>
                   <li>Headers & Footers: <b>Uncheck (டிக் எடுக்கவும்)</b></li>
                 </ul>
               </div>
 
-              {/* Thermal Roll Guide */}
-              <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 space-y-1.5">
-                <p className="font-bold">2. தெர்மல் லேபிள் ரோல் (50 mm × 25 mm):</p>
-                <ul className="list-disc list-inside space-y-0.5 text-[11px]">
-                  <li>தாள் அளவு (Paper Size): <b>50 mm × 25 mm (2" × 1")</b></li>
-                  <li>விளிம்பு (Margins): <b>None (0 mm)</b></li>
-                  <li>அளவீடு (Scale): <b>100%</b></li>
-                </ul>
-              </div>
+              <p className="text-[11px] text-gray-500 leading-relaxed">
+                இந்த 2-நெடுவரிசை அமைப்பு TSC, Zebra, TVS, Xprinter உள்ளிட்ட அனைத்து 4-அங்குல (4-inch / 104mm)
+                தெர்மல் லேபிள் பிரிண்டர்களுடனும் துல்லியமாக பொருந்தும்.
+              </p>
             </div>
 
             <button
@@ -943,7 +863,7 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
         </div>
       )}
 
-      {/* 5. DEDICATED PRINT PORTAL WITH MULTI-PAGE & GRID PAGINATION CSS */}
+      {/* 5. DEDICATED 2-COLUMN THERMAL ROLL PRINT CSS & PORTAL */}
       <style>{`
         @media print {
           /* Remove the whole application layout tree from print */
@@ -955,92 +875,54 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
             margin: 0 !important;
             padding: 0 !important;
             background: #ffffff !important;
-            width: 100% !important;
+            width: 104mm !important;
             height: auto !important;
           }
 
           #label-print-portal {
-            display: flex !important;
+            display: block !important;
             visibility: visible !important;
             position: static !important;
+            width: 104mm !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
           }
 
           ${
-            printLayout === 'a4-sheet'
+            printLayout === 'thermal-roll-2col'
               ? `
               @page {
-                size: A4 portrait !important;
-                margin: 8mm 6mm 14mm 6mm !important;
-              }
-
-              #label-print-portal {
-                display: block !important;
-                width: 100% !important;
-                max-width: 200mm !important;
-                margin: 0 auto !important;
-                padding: 0 !important;
-                text-align: left !important;
-                background: #ffffff !important;
-              }
-
-              .label-print-item {
-                display: inline-block !important;
-                vertical-align: top !important;
-                page-break-inside: avoid !important;
-                break-inside: avoid !important;
-                -webkit-column-break-inside: avoid !important;
-                margin: 1.5mm 2mm !important;
-                padding: 0 !important;
-                box-sizing: border-box !important;
-              }
-
-              .label-sticker-page {
-                width: 47mm !important;
-                height: 24mm !important;
-                max-width: 47mm !important;
-                max-height: 24mm !important;
-                min-width: 47mm !important;
-                min-height: 24mm !important;
-                margin: 0 !important;
-                padding: 1.2mm 1.5mm !important;
-                box-sizing: border-box !important;
-                page-break-inside: avoid !important;
-                break-inside: avoid !important;
-                -webkit-column-break-inside: avoid !important;
-                page-break-after: auto !important;
-                break-after: auto !important;
-                overflow: hidden !important;
-                border: 0.5pt solid #d1d5db !important;
-                border-radius: 1.5mm !important;
-                box-shadow: none !important;
-                background: #ffffff !important;
-                color: #000000 !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-              }
-            `
-              : `
-              @page {
-                size: 50mm 25mm !important;
+                size: 104mm 25mm !important;
                 margin: 0mm !important;
               }
 
-              #label-print-portal {
-                display: block !important;
-                width: 50mm !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                background: #ffffff !important;
-              }
-
-              .label-print-item {
-                display: block !important;
+              .label-roll-row {
+                display: flex !important;
+                flex-direction: row !important;
+                justify-content: space-between !important;
+                align-items: center !important;
+                width: 104mm !important;
+                height: 25mm !important;
+                max-height: 25mm !important;
                 page-break-after: always !important;
                 break-after: page !important;
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
                 margin: 0 !important;
                 padding: 0 !important;
+                box-sizing: border-box !important;
+                overflow: hidden !important;
+              }
+
+              .label-col {
+                width: 50mm !important;
+                height: 25mm !important;
+                max-width: 50mm !important;
+                max-height: 25mm !important;
+                box-sizing: border-box !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
               }
 
               .label-sticker-page {
@@ -1065,25 +947,91 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
                 print-color-adjust: exact !important;
               }
             `
+              : `
+              @page {
+                size: A4 portrait !important;
+                margin: 10mm 15mm 15mm 15mm !important;
+              }
+
+              html, body {
+                width: 100% !important;
+              }
+
+              #label-print-portal {
+                width: 100% !important;
+                max-width: 160mm !important;
+                margin: 0 auto !important;
+              }
+
+              .label-roll-row {
+                display: flex !important;
+                flex-direction: row !important;
+                justify-content: center !important;
+                gap: 12mm !important;
+                width: 100% !important;
+                height: 25mm !important;
+                margin-bottom: 4mm !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+                page-break-after: auto !important;
+                break-after: auto !important;
+              }
+
+              .label-col {
+                width: 50mm !important;
+                height: 25mm !important;
+                box-sizing: border-box !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+              }
+
+              .label-sticker-page {
+                width: 50mm !important;
+                height: 25mm !important;
+                box-sizing: border-box !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+                border: 0.5pt solid #d1d5db !important;
+                border-radius: 1mm !important;
+                background: #ffffff !important;
+                color: #000000 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+              }
+            `
           }
         }
       `}</style>
 
-      {/* Render directly to document.body via createPortal so it has zero offset and no parent clipping */}
+      {/* Render directly to document.body via createPortal: 2 columns per row */}
       {typeof document !== 'undefined' &&
         createPortal(
           <div
             id="label-print-portal"
-            className={`print-only ${printLayout === 'a4-sheet' ? 'a4-sheet-mode' : 'thermal-roll-mode'}`}
+            className={`print-only ${printLayout}`}
           >
-            {flattenedStickers.map((product, idx) => (
-              <div key={`print-${product.id}-${idx}`} className="label-print-item">
-                <BarcodeSticker
-                  product={product}
-                  options={options}
-                  isPrint={true}
-                  isA4Sheet={printLayout === 'a4-sheet'}
-                />
+            {stickerRows.map((row, rowIdx) => (
+              <div key={`row-${rowIdx}`} className="label-roll-row">
+                <div className="label-col">
+                  <BarcodeSticker
+                    product={row.col1}
+                    options={options}
+                    isPrint={true}
+                    isA4Sheet={printLayout === 'a4-sheet-2col'}
+                  />
+                </div>
+                <div className="label-col">
+                  {row.col2 ? (
+                    <BarcodeSticker
+                      product={row.col2}
+                      options={options}
+                      isPrint={true}
+                      isA4Sheet={printLayout === 'a4-sheet-2col'}
+                    />
+                  ) : (
+                    <div style={{ width: '50mm', height: '25mm' }} />
+                  )}
+                </div>
               </div>
             ))}
           </div>,

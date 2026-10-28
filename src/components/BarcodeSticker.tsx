@@ -4,7 +4,7 @@ import { Product, LabelPrintOptions } from '../types';
 interface BarcodeStickerProps {
   product: Product;
   options: LabelPrintOptions;
-  previewScale?: number; // scale multiplier for on-screen preview (e.g. 1.0, 1.5, 2.0)
+  previewScale?: number; // scale multiplier for on-screen preview (e.g. 1.0, 1.4, 1.8)
   className?: string;
   isPrint?: boolean;
   isA4Sheet?: boolean;
@@ -18,44 +18,24 @@ export const BarcodeSticker: React.FC<BarcodeStickerProps> = ({
   isPrint = false,
   isA4Sheet = false,
 }) => {
-  // Formatted price display
-  const priceDisplay =
-    product.sellingPrice != null && Number(product.sellingPrice) > 0
-      ? `₹${Number(product.sellingPrice).toFixed(0)}${product.unit ? ` / ${product.unit}` : ''}`
-      : null;
-
-  // Formatted date display (DD/MM/YY)
-  const formattedDate = (() => {
-    if (!options.packedDate) return '';
-    try {
-      const parts = options.packedDate.split('-');
-      if (parts.length === 3) {
-        return `${parts[2]}/${parts[1]}/${parts[0].slice(-2)}`;
-      }
-      return options.packedDate;
-    } catch {
-      return options.packedDate;
-    }
-  })();
-
-  // 50mm x 25mm exact dimensions for product box sticker
+  // Exactly 50mm wide x 25mm high for 2-column thermal label roll
   return (
     <div
       className={`label-sticker-page bg-white text-black box-border flex flex-col justify-between overflow-hidden select-none ${
         isPrint
           ? isA4Sheet
-            ? 'border border-neutral-300 rounded-[1.5mm]'
-            : ''
-          : 'relative rounded-[2mm] border border-gray-300 shadow-xs'
+            ? 'border border-neutral-300 rounded-[1mm]'
+            : 'border border-transparent'
+          : 'relative rounded-[1.5mm] border border-gray-300 shadow-xs'
       } ${className}`}
       style={{
-        width: isA4Sheet && isPrint ? '48mm' : '50mm',
-        height: isA4Sheet && isPrint ? '24.5mm' : '25mm',
-        maxWidth: isA4Sheet && isPrint ? '48mm' : '50mm',
-        maxHeight: isA4Sheet && isPrint ? '24.5mm' : '25mm',
-        minWidth: isA4Sheet && isPrint ? '48mm' : '50mm',
-        minHeight: isA4Sheet && isPrint ? '24.5mm' : '25mm',
-        padding: '1.2mm 1.8mm',
+        width: '50mm',
+        height: '25mm',
+        maxWidth: '50mm',
+        maxHeight: '25mm',
+        minWidth: '50mm',
+        minHeight: '25mm',
+        padding: '1.2mm 2mm',
         transform: !isPrint && previewScale !== 1.0 ? `scale(${previewScale})` : undefined,
         transformOrigin: 'top left',
         fontFamily: "'Plus Jakarta Sans', system-ui, -apple-system, sans-serif",
@@ -68,12 +48,12 @@ export const BarcodeSticker: React.FC<BarcodeStickerProps> = ({
       {/* 1. Header: Shop Name */}
       {options.showShopName && (
         <div
-          className="w-full flex items-center justify-center leading-none border-b border-black/15 pb-[0.4mm]"
-          style={{ borderColor: 'rgba(0,0,0,0.15)' }}
+          className="w-full flex items-center justify-center leading-none border-b border-black/20 pb-[0.6mm]"
+          style={{ borderColor: 'rgba(0,0,0,0.2)' }}
         >
           <span
-            className="text-[7pt] font-black tracking-wider uppercase text-center truncate text-black"
-            style={{ color: '#000000' }}
+            className="text-[7.5pt] font-black tracking-wider uppercase text-center truncate text-black"
+            style={{ color: '#000000', letterSpacing: '0.03em' }}
           >
             {options.shopName || 'ROYAL SWEETS'}
           </span>
@@ -83,41 +63,14 @@ export const BarcodeSticker: React.FC<BarcodeStickerProps> = ({
       {/* 2. Center: Large, prominent Product Name */}
       <div className="w-full flex-1 flex items-center justify-center px-[0.5mm] py-[0.5mm] my-auto overflow-hidden">
         <div
-          className="text-[11.5pt] sm:text-[12pt] font-black leading-[1.12] text-center line-clamp-2 break-words text-black"
+          className="text-[13pt] sm:text-[14pt] font-black leading-[1.18] text-center line-clamp-2 break-words text-black"
           style={{ color: '#000000' }}
           title={product.name}
         >
           {product.name}
         </div>
       </div>
-
-      {/* 3. Footer: Price (MRP) & Packed Date */}
-      <div
-        className="w-full flex items-end justify-between leading-none pt-[0.4mm] border-t border-black/15"
-        style={{ borderColor: 'rgba(0,0,0,0.15)' }}
-      >
-        {options.showPrice && priceDisplay ? (
-          <div className="flex items-baseline gap-[0.5mm]">
-            <span className="text-[5.5pt] font-bold uppercase text-neutral-600" style={{ color: '#4b5563' }}>
-              MRP:
-            </span>
-            <span className="text-[9pt] font-black tracking-tight text-black" style={{ color: '#000000' }}>
-              {priceDisplay}
-            </span>
-          </div>
-        ) : (
-          <div className="text-[6pt] font-semibold text-neutral-600" style={{ color: '#4b5563' }}>
-            {product.unit ? `Unit: ${product.unit}` : ''}
-          </div>
-        )}
-
-        {options.showPackedDate && formattedDate && (
-          <div className="text-[6pt] font-semibold tracking-tight text-right ml-auto text-black" style={{ color: '#000000' }}>
-            <span>Pkd: </span>
-            <span className="font-bold">{formattedDate}</span>
-          </div>
-        )}
-      </div>
     </div>
   );
 };
+
