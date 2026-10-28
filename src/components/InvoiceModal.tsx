@@ -516,7 +516,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                   {isBulkBill ? (
                     <>
                       <p className="text-[13px] text-black text-center">
-                        தொலைபேசி: 0427-2243676 செல்: 9360013676, 9043013676
+                        செல்: 9360013676, 9043013676 தொலைபேசி: 0427-2243676
                       </p>
                       <p className="text-[13px] text-black text-center">
                         FSSAI எண்: {FSSAI_NO}
