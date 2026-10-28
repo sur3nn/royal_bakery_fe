@@ -79,8 +79,8 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
     }
   }, [effectiveProducts.length]);
 
-  // Print Format Layout: 'thermal-roll-2col' (2 labels side-by-side on thermal roll) vs 'a4-sheet-2col'
-  const [printLayout, setPrintLayout] = useState<'thermal-roll-2col' | 'a4-sheet-2col'>('thermal-roll-2col');
+  // Print Format Layout: 'a4-sheet-2col' (2 columns filling paper height) vs 'thermal-roll-2col' (104x25mm per feed)
+  const [printLayout, setPrintLayout] = useState<'a4-sheet-2col' | 'thermal-roll-2col'>('a4-sheet-2col');
 
   // Sticker Customization Options (Clean Product Label: Shop Name + Product Name)
   const todayIso = new Date().toISOString().split('T')[0];
@@ -270,18 +270,6 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
           <div className="flex items-center bg-[#FFF9F5] p-1 rounded-xl border border-[#EDE2E5] text-xs font-bold">
             <button
               type="button"
-              onClick={() => setPrintLayout('thermal-roll-2col')}
-              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-                printLayout === 'thermal-roll-2col'
-                  ? 'bg-[#C94F6D] text-white shadow-2xs'
-                  : 'text-[#756B70] hover:text-[#C94F6D]'
-              }`}
-            >
-              <Tag className="w-3.5 h-3.5" />
-              <span>தெர்மல் ரோல் (2 Column)</span>
-            </button>
-            <button
-              type="button"
               onClick={() => setPrintLayout('a4-sheet-2col')}
               className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
                 printLayout === 'a4-sheet-2col'
@@ -290,7 +278,19 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
               }`}
             >
               <Columns2 className="w-3.5 h-3.5" />
-              <span>A4 தாள் (2 Column)</span>
+              <span>A4 தாள் (2 வரிசை • முழு உயரம்)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setPrintLayout('thermal-roll-2col')}
+              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                printLayout === 'thermal-roll-2col'
+                  ? 'bg-[#C94F6D] text-white shadow-2xs'
+                  : 'text-[#756B70] hover:text-[#C94F6D]'
+              }`}
+            >
+              <Tag className="w-3.5 h-3.5" />
+              <span>தெர்மல் ரோல் (104mm × 25mm)</span>
             </button>
           </div>
 
@@ -863,7 +863,7 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
         </div>
       )}
 
-      {/* 5. DEDICATED 2-COLUMN THERMAL ROLL PRINT CSS & PORTAL */}
+      {/* 5. DEDICATED 2-COLUMN PRINT CSS & PORTAL (ZERO HALF-CUT & PAPER-HEIGHT ELIGIBLE) */}
       <style>{`
         @media print {
           /* Remove the whole application layout tree from print */
@@ -875,7 +875,6 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
             margin: 0 !important;
             padding: 0 !important;
             background: #ffffff !important;
-            width: 104mm !important;
             height: auto !important;
           }
 
@@ -883,25 +882,100 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
             display: block !important;
             visibility: visible !important;
             position: static !important;
-            width: 104mm !important;
-            margin: 0 !important;
+            margin: 0 auto !important;
             padding: 0 !important;
             background: #ffffff !important;
           }
 
           ${
-            printLayout === 'thermal-roll-2col'
+            printLayout === 'a4-sheet-2col'
               ? `
+              @page {
+                size: A4 portrait !important;
+                margin: 8mm 10mm 10mm 10mm !important;
+              }
+
+              html, body {
+                width: 100% !important;
+              }
+
+              #label-print-portal {
+                width: 100% !important;
+                max-width: 130mm !important;
+              }
+
+              .label-print-row-wrap {
+                display: block !important;
+                width: 100% !important;
+                margin-bottom: 2.5mm !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+                break-inside: avoid-page !important;
+                page-break-after: auto !important;
+                break-after: auto !important;
+              }
+
+              .label-print-table {
+                width: 100% !important;
+                border-collapse: collapse !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+                break-inside: avoid-page !important;
+              }
+
+              .label-print-table tr {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+                break-inside: avoid-page !important;
+                height: 25mm !important;
+              }
+
+              .label-col-cell {
+                width: 50% !important;
+                height: 25mm !important;
+                padding: 0 !important;
+                vertical-align: middle !important;
+                text-align: center !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+              }
+
+              .label-sticker-page {
+                width: 50mm !important;
+                height: 25mm !important;
+                max-width: 50mm !important;
+                max-height: 25mm !important;
+                min-width: 50mm !important;
+                min-height: 25mm !important;
+                display: inline-block !important;
+                margin: 0 auto !important;
+                box-sizing: border-box !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+                border: 0.5pt solid #d1d5db !important;
+                border-radius: 1mm !important;
+                background: #ffffff !important;
+                color: #000000 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+              }
+            `
+              : `
               @page {
                 size: 104mm 25mm !important;
                 margin: 0mm !important;
               }
 
-              .label-roll-row {
-                display: flex !important;
-                flex-direction: row !important;
-                justify-content: space-between !important;
-                align-items: center !important;
+              html, body {
+                width: 104mm !important;
+              }
+
+              #label-print-portal {
+                width: 104mm !important;
+              }
+
+              .label-print-row-wrap {
+                display: block !important;
                 width: 104mm !important;
                 height: 25mm !important;
                 max-height: 25mm !important;
@@ -915,14 +989,17 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
                 overflow: hidden !important;
               }
 
-              .label-col {
+              .label-print-table {
+                width: 104mm !important;
+                border-collapse: collapse !important;
+              }
+
+              .label-col-cell {
                 width: 50mm !important;
                 height: 25mm !important;
-                max-width: 50mm !important;
-                max-height: 25mm !important;
-                box-sizing: border-box !important;
-                page-break-inside: avoid !important;
-                break-inside: avoid !important;
+                padding: 0 !important;
+                vertical-align: middle !important;
+                text-align: center !important;
               }
 
               .label-sticker-page {
@@ -933,7 +1010,7 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
                 min-width: 50mm !important;
                 min-height: 25mm !important;
                 margin: 0 !important;
-                padding: 1.2mm 1.5mm !important;
+                padding: 1.2mm 2mm !important;
                 box-sizing: border-box !important;
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
@@ -947,63 +1024,11 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
                 print-color-adjust: exact !important;
               }
             `
-              : `
-              @page {
-                size: A4 portrait !important;
-                margin: 10mm 15mm 15mm 15mm !important;
-              }
-
-              html, body {
-                width: 100% !important;
-              }
-
-              #label-print-portal {
-                width: 100% !important;
-                max-width: 160mm !important;
-                margin: 0 auto !important;
-              }
-
-              .label-roll-row {
-                display: flex !important;
-                flex-direction: row !important;
-                justify-content: center !important;
-                gap: 12mm !important;
-                width: 100% !important;
-                height: 25mm !important;
-                margin-bottom: 4mm !important;
-                page-break-inside: avoid !important;
-                break-inside: avoid !important;
-                page-break-after: auto !important;
-                break-after: auto !important;
-              }
-
-              .label-col {
-                width: 50mm !important;
-                height: 25mm !important;
-                box-sizing: border-box !important;
-                page-break-inside: avoid !important;
-                break-inside: avoid !important;
-              }
-
-              .label-sticker-page {
-                width: 50mm !important;
-                height: 25mm !important;
-                box-sizing: border-box !important;
-                page-break-inside: avoid !important;
-                break-inside: avoid !important;
-                border: 0.5pt solid #d1d5db !important;
-                border-radius: 1mm !important;
-                background: #ffffff !important;
-                color: #000000 !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-              }
-            `
           }
         }
       `}</style>
 
-      {/* Render directly to document.body via createPortal: 2 columns per row */}
+      {/* Render directly to document.body via createPortal: 2 columns per row with table anti-split */}
       {typeof document !== 'undefined' &&
         createPortal(
           <div
@@ -1011,27 +1036,37 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
             className={`print-only ${printLayout}`}
           >
             {stickerRows.map((row, rowIdx) => (
-              <div key={`row-${rowIdx}`} className="label-roll-row">
-                <div className="label-col">
-                  <BarcodeSticker
-                    product={row.col1}
-                    options={options}
-                    isPrint={true}
-                    isA4Sheet={printLayout === 'a4-sheet-2col'}
-                  />
-                </div>
-                <div className="label-col">
-                  {row.col2 ? (
-                    <BarcodeSticker
-                      product={row.col2}
-                      options={options}
-                      isPrint={true}
-                      isA4Sheet={printLayout === 'a4-sheet-2col'}
-                    />
-                  ) : (
-                    <div style={{ width: '50mm', height: '25mm' }} />
-                  )}
-                </div>
+              <div key={`row-${rowIdx}`} className="label-print-row-wrap">
+                <table className="label-print-table">
+                  <tbody>
+                    <tr>
+                      <td className="label-col-cell">
+                        <div style={{ display: 'inline-block', width: '50mm', height: '25mm' }}>
+                          <BarcodeSticker
+                            product={row.col1}
+                            options={options}
+                            isPrint={true}
+                            isA4Sheet={printLayout === 'a4-sheet-2col'}
+                          />
+                        </div>
+                      </td>
+                      <td className="label-col-cell">
+                        {row.col2 ? (
+                          <div style={{ display: 'inline-block', width: '50mm', height: '25mm' }}>
+                            <BarcodeSticker
+                              product={row.col2}
+                              options={options}
+                              isPrint={true}
+                              isA4Sheet={printLayout === 'a4-sheet-2col'}
+                            />
+                          </div>
+                        ) : (
+                          <div style={{ display: 'inline-block', width: '50mm', height: '25mm' }} />
+                        )}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             ))}
           </div>,
