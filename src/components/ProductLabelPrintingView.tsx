@@ -970,21 +970,28 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
               ? `
               @page {
                 size: A4 portrait !important;
-                margin: 6mm 5mm !important;
+                margin: 8mm 6mm 14mm 6mm !important;
               }
 
               #label-print-portal {
-                display: flex !important;
-                flex-direction: row !important;
-                flex-wrap: wrap !important;
-                justify-content: flex-start !important;
-                align-items: flex-start !important;
-                gap: 2.5mm 3.5mm !important;
+                display: block !important;
                 width: 100% !important;
                 max-width: 200mm !important;
                 margin: 0 auto !important;
                 padding: 0 !important;
+                text-align: left !important;
                 background: #ffffff !important;
+              }
+
+              .label-print-item {
+                display: inline-block !important;
+                vertical-align: top !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+                -webkit-column-break-inside: avoid !important;
+                margin: 1.5mm 2mm !important;
+                padding: 0 !important;
+                box-sizing: border-box !important;
               }
 
               .label-sticker-page {
@@ -999,6 +1006,7 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
                 box-sizing: border-box !important;
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
+                -webkit-column-break-inside: avoid !important;
                 page-break-after: auto !important;
                 break-after: auto !important;
                 overflow: hidden !important;
@@ -1025,6 +1033,16 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
                 background: #ffffff !important;
               }
 
+              .label-print-item {
+                display: block !important;
+                page-break-after: always !important;
+                break-after: page !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+                margin: 0 !important;
+                padding: 0 !important;
+              }
+
               .label-sticker-page {
                 width: 50mm !important;
                 height: 25mm !important;
@@ -1035,8 +1053,6 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
                 margin: 0 !important;
                 padding: 1.2mm 1.5mm !important;
                 box-sizing: border-box !important;
-                page-break-after: always !important;
-                break-after: page !important;
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
                 overflow: hidden !important;
@@ -1061,13 +1077,14 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
             className={`print-only ${printLayout === 'a4-sheet' ? 'a4-sheet-mode' : 'thermal-roll-mode'}`}
           >
             {flattenedStickers.map((product, idx) => (
-              <BarcodeSticker
-                key={`print-${product.id}-${idx}`}
-                product={product}
-                options={options}
-                isPrint={true}
-                isA4Sheet={printLayout === 'a4-sheet'}
-              />
+              <div key={`print-${product.id}-${idx}`} className="label-print-item">
+                <BarcodeSticker
+                  product={product}
+                  options={options}
+                  isPrint={true}
+                  isA4Sheet={printLayout === 'a4-sheet'}
+                />
+              </div>
             ))}
           </div>,
           document.body
