@@ -60,11 +60,25 @@ export const BarcodeSticker: React.FC<BarcodeStickerProps> = ({
         </div>
       )}
 
-      {/* 2. Center: Large, prominent Product Name filling the sticker with zero unwanted bottom gap */}
-      <div className="w-full flex-1 flex items-center justify-center px-[0.5mm] py-0 overflow-hidden">
+      {/* 2. Center: Large, prominent Product Name strictly center aligned */}
+      <div
+        className="label-product-name-box w-full flex-1 flex items-center justify-center px-[0.5mm] py-0 overflow-hidden text-center"
+        style={{
+          textAlign: 'center',
+          justifyContent: 'center',
+          alignItems: 'center',
+          width: '100%',
+        }}
+      >
         <div
-          className="text-[13pt] sm:text-[14.5pt] font-black leading-[1.15] text-center line-clamp-2 break-words text-black"
-          style={{ color: '#000000' }}
+          className="label-product-name-text text-[13pt] sm:text-[14.5pt] font-black leading-[1.15] text-center line-clamp-2 break-words text-black"
+          style={{
+            color: '#000000',
+            textAlign: 'center',
+            width: '100%',
+            margin: '0 auto',
+            display: 'block',
+          }}
           title={product.name}
         >
           {product.name}

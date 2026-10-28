@@ -959,8 +959,13 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
                 max-height: 25mm !important;
                 min-width: 50mm !important;
                 min-height: 25mm !important;
-                display: block !important;
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: flex-start !important;
+                align-items: center !important;
+                text-align: center !important;
                 margin: 0 !important;
+                padding: 0.8mm 1.5mm 0.5mm 1.5mm !important;
                 box-sizing: border-box !important;
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
@@ -970,6 +975,21 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
                 color: #000000 !important;
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
+              }
+
+              .label-product-name-box {
+                width: 100% !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                text-align: center !important;
+              }
+
+              .label-product-name-text {
+                width: 100% !important;
+                text-align: center !important;
+                margin: 0 auto !important;
+                display: block !important;
               }
             `
               : `
@@ -1030,7 +1050,11 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
                 max-height: 25mm !important;
                 min-width: 50mm !important;
                 min-height: 25mm !important;
-                display: block !important;
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: flex-start !important;
+                align-items: center !important;
+                text-align: center !important;
                 margin: 0 !important;
                 padding: 0.8mm 1.5mm 0.5mm 1.5mm !important;
                 box-sizing: border-box !important;
@@ -1044,6 +1068,21 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
                 color: #000000 !important;
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
+              }
+
+              .label-product-name-box {
+                width: 100% !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                text-align: center !important;
+              }
+
+              .label-product-name-text {
+                width: 100% !important;
+                text-align: center !important;
+                margin: 0 auto !important;
+                display: block !important;
               }
             `
           }
