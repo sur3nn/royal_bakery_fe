@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Tag,
   Search,
@@ -22,7 +23,6 @@ import {
   Info,
   Plus,
   Minus,
-  FileText,
   LayoutGrid
 } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
@@ -63,6 +63,21 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
   const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
   const [copiesMap, setCopiesMap] = useState<Record<string, number>>({});
   const [bulkCopyCount, setBulkCopyCount] = useState<number>(2);
+
+  // Auto-select products by default when products load so preview & print are NEVER empty
+  useEffect(() => {
+    if (effectiveProducts.length > 0 && selectedProductIds.size === 0) {
+      const initialIds = new Set<string>();
+      const initialCopies: Record<string, number> = {};
+      effectiveProducts.forEach((p) => {
+        const idStr = String(p.id);
+        initialIds.add(idStr);
+        initialCopies[idStr] = 1;
+      });
+      setSelectedProductIds(initialIds);
+      setCopiesMap(initialCopies);
+    }
+  }, [effectiveProducts.length]);
 
   // Print Format Layout: 'a4-sheet' (4 columns grid) vs 'thermal-roll' (single label roll)
   const [printLayout, setPrintLayout] = useState<'a4-sheet' | 'thermal-roll'>('a4-sheet');
@@ -132,8 +147,12 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
         list.push(item.product);
       }
     });
+    // Safety fallback: if user deselected everything, still provide first product so print is never empty
+    if (list.length === 0 && effectiveProducts.length > 0) {
+      list.push(effectiveProducts[0]);
+    }
     return list;
-  }, [selectedItems]);
+  }, [selectedItems, effectiveProducts]);
 
   // Keep preview index in bounds
   useEffect(() => {
@@ -209,7 +228,7 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
 
   // Trigger Print Function
   const handlePrint = () => {
-    if (totalStickersCount === 0) {
+    if (flattenedStickers.length === 0) {
       if (onToast) {
         onToast('warning', 'தேர்வு காலியாக உள்ளது', 'அச்சிட குறைந்தபட்சம் ஒரு பொருளை தேர்வு செய்யவும்');
       }
@@ -222,7 +241,7 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
   const activePreviewProduct = selectedItems[previewIndex]?.product || effectiveProducts[0];
 
   // A4 sheet calculations
-  const a4SheetsEstimate = Math.ceil(totalStickersCount / 44) || 1;
+  const a4SheetsEstimate = Math.ceil(flattenedStickers.length / 44) || 1;
 
   return (
     <div className="space-y-6 pb-20">
@@ -285,26 +304,24 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
 
           <button
             onClick={() => {
-              if (totalStickersCount === 0) {
+              if (flattenedStickers.length === 0) {
                 if (onToast) onToast('warning', 'பொருட்கள் இல்லை', 'முதலில் பொருட்களை தேர்வு செய்யவும்');
                 return;
               }
               setShowFullPreviewModal(true);
             }}
-            disabled={totalStickersCount === 0}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 border-[#C94F6D] text-[#C94F6D] font-bold text-sm hover:bg-[#FFF4F6] transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-2xs"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 border-[#C94F6D] text-[#C94F6D] font-bold text-sm hover:bg-[#FFF4F6] transition-all cursor-pointer shadow-2xs"
           >
             <Eye className="w-4 h-4" />
-            <span>முழு முன்னோட்டம் ({totalStickersCount})</span>
+            <span>முழு முன்னோட்டம் ({flattenedStickers.length})</span>
           </button>
 
           <button
             onClick={handlePrint}
-            disabled={totalStickersCount === 0}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#C94F6D] to-[#A83D58] text-white font-bold text-sm shadow-md hover:shadow-lg hover:brightness-105 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#C94F6D] to-[#A83D58] text-white font-bold text-sm shadow-md hover:shadow-lg hover:brightness-105 active:scale-95 transition-all cursor-pointer"
           >
             <Printer className="w-4 h-4" />
-            <span>அச்சிடு ({totalStickersCount} லேபிள்கள்)</span>
+            <span>அச்சிடு ({flattenedStickers.length} லேபிள்கள்)</span>
           </button>
         </div>
       </div>
@@ -341,7 +358,7 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
                 <Check className="w-3.5 h-3.5" />
                 <span>{selectedProductIds.size} பொருட்கள் தேர்வு</span>
                 <span className="text-gray-300">|</span>
-                <span>{totalStickersCount} லேபிள்கள்</span>
+                <span>{flattenedStickers.length} லேபிள்கள்</span>
               </div>
             </div>
 
@@ -753,7 +770,7 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
                 <Printer className="w-5 h-5 text-[#C94F6D]" />
                 <div>
                   <h3 className="font-extrabold text-base text-[#29252A]">
-                    லேபிள் முன்னோட்டம் & அச்சுப் பட்டியல் ({totalStickersCount} லேபிள்கள்)
+                    லேபிள் முன்னோட்டம் & அச்சுப் பட்டியல் ({flattenedStickers.length} லேபிள்கள்)
                   </h3>
                   <p className="text-xs text-[#756B70]">
                     {printLayout === 'a4-sheet'
@@ -789,7 +806,7 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
                   className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#C94F6D] text-white font-bold text-xs hover:brightness-105 active:scale-95 transition-all cursor-pointer shadow-xs"
                 >
                   <Printer className="w-3.5 h-3.5" />
-                  <span>அச்சிடு ({totalStickersCount})</span>
+                  <span>அச்சிடு ({flattenedStickers.length})</span>
                 </button>
                 <button
                   onClick={() => setShowFullPreviewModal(false)}
@@ -807,7 +824,7 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
                 <div className="flex items-center gap-2">
                   <Info className="w-4 h-4 text-blue-600 shrink-0" />
                   <span>
-                    மொத்த லேபிள்கள்: <b>{totalStickersCount} எண்ணிக்கை</b> • வடிவம்:{' '}
+                    மொத்த லேபிள்கள்: <b>{flattenedStickers.length} எண்ணிக்கை</b> • வடிவம்:{' '}
                     <b>{printLayout === 'a4-sheet' ? `A4 தாள் (${a4SheetsEstimate} தாள் தோராயமாக)` : 'தனி தெர்மல் லேபிள் ரோல்'}</b>
                   </span>
                 </div>
@@ -929,15 +946,23 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
       {/* 5. DEDICATED PRINT PORTAL WITH MULTI-PAGE & GRID PAGINATION CSS */}
       <style>{`
         @media print {
-          /* Hide all screen UI */
-          body > * {
-            visibility: hidden !important;
+          /* Remove the whole application layout tree from print */
+          #root {
+            display: none !important;
           }
 
-          /* Show only the print portal */
-          #label-print-portal,
-          #label-print-portal * {
+          html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+            width: 100% !important;
+            height: auto !important;
+          }
+
+          #label-print-portal {
+            display: flex !important;
             visibility: visible !important;
+            position: static !important;
           }
 
           ${
@@ -945,15 +970,7 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
               ? `
               @page {
                 size: A4 portrait !important;
-                margin: 8mm 6mm !important;
-              }
-
-              html, body {
-                margin: 0 !important;
-                padding: 0 !important;
-                background: #ffffff !important;
-                width: 100% !important;
-                height: auto !important;
+                margin: 6mm 5mm !important;
               }
 
               #label-print-portal {
@@ -964,20 +981,19 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
                 align-items: flex-start !important;
                 gap: 2.5mm 3.5mm !important;
                 width: 100% !important;
-                max-width: 198mm !important;
+                max-width: 200mm !important;
                 margin: 0 auto !important;
                 padding: 0 !important;
-                position: static !important;
                 background: #ffffff !important;
               }
 
               .label-sticker-page {
-                width: 47.5mm !important;
-                height: 24.2mm !important;
-                max-width: 47.5mm !important;
-                max-height: 24.2mm !important;
-                min-width: 47.5mm !important;
-                min-height: 24.2mm !important;
+                width: 47mm !important;
+                height: 24mm !important;
+                max-width: 47mm !important;
+                max-height: 24mm !important;
+                min-width: 47mm !important;
+                min-height: 24mm !important;
                 margin: 0 !important;
                 padding: 1.2mm 1.5mm !important;
                 box-sizing: border-box !important;
@@ -986,7 +1002,7 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
                 page-break-after: auto !important;
                 break-after: auto !important;
                 overflow: hidden !important;
-                border: 0.5pt solid #cccccc !important;
+                border: 0.5pt solid #d1d5db !important;
                 border-radius: 1.5mm !important;
                 box-shadow: none !important;
                 background: #ffffff !important;
@@ -1001,17 +1017,8 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
                 margin: 0mm !important;
               }
 
-              html, body {
-                margin: 0 !important;
-                padding: 0 !important;
-                background: #ffffff !important;
-                width: 50mm !important;
-                height: auto !important;
-              }
-
               #label-print-portal {
                 display: block !important;
-                position: static !important;
                 width: 50mm !important;
                 margin: 0 !important;
                 padding: 0 !important;
@@ -1046,21 +1053,25 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
         }
       `}</style>
 
-      {/* This element is hidden on screen and exclusively rendered during print */}
-      <div
-        id="label-print-portal"
-        className={`print-only ${printLayout === 'a4-sheet' ? 'a4-sheet-mode' : 'thermal-roll-mode'}`}
-      >
-        {flattenedStickers.map((product, idx) => (
-          <BarcodeSticker
-            key={`print-${product.id}-${idx}`}
-            product={product}
-            options={options}
-            isPrint={true}
-            isA4Sheet={printLayout === 'a4-sheet'}
-          />
-        ))}
-      </div>
+      {/* Render directly to document.body via createPortal so it has zero offset and no parent clipping */}
+      {typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            id="label-print-portal"
+            className={`print-only ${printLayout === 'a4-sheet' ? 'a4-sheet-mode' : 'thermal-roll-mode'}`}
+          >
+            {flattenedStickers.map((product, idx) => (
+              <BarcodeSticker
+                key={`print-${product.id}-${idx}`}
+                product={product}
+                options={options}
+                isPrint={true}
+                isA4Sheet={printLayout === 'a4-sheet'}
+              />
+            ))}
+          </div>,
+          document.body
+        )}
     </div>
   );
 };

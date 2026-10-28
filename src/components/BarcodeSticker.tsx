@@ -59,12 +59,22 @@ export const BarcodeSticker: React.FC<BarcodeStickerProps> = ({
         transform: !isPrint && previewScale !== 1.0 ? `scale(${previewScale})` : undefined,
         transformOrigin: 'top left',
         fontFamily: "'Plus Jakarta Sans', system-ui, -apple-system, sans-serif",
+        color: '#000000',
+        backgroundColor: '#ffffff',
+        WebkitPrintColorAdjust: 'exact',
+        printColorAdjust: 'exact',
       }}
     >
       {/* 1. Header: Shop Name */}
       {options.showShopName && (
-        <div className="w-full flex items-center justify-center leading-none border-b border-black/15 pb-[0.4mm]">
-          <span className="text-[7pt] font-black tracking-wider uppercase text-center truncate text-black">
+        <div
+          className="w-full flex items-center justify-center leading-none border-b border-black/15 pb-[0.4mm]"
+          style={{ borderColor: 'rgba(0,0,0,0.15)' }}
+        >
+          <span
+            className="text-[7pt] font-black tracking-wider uppercase text-center truncate text-black"
+            style={{ color: '#000000' }}
+          >
             {options.shopName || 'ROYAL SWEETS'}
           </span>
         </div>
@@ -73,7 +83,8 @@ export const BarcodeSticker: React.FC<BarcodeStickerProps> = ({
       {/* 2. Center: Large, prominent Product Name */}
       <div className="w-full flex-1 flex items-center justify-center px-[0.5mm] py-[0.5mm] my-auto overflow-hidden">
         <div
-          className="text-[11.5pt] sm:text-[12pt] font-black text-black leading-[1.12] text-center line-clamp-2 break-words"
+          className="text-[11.5pt] sm:text-[12pt] font-black leading-[1.12] text-center line-clamp-2 break-words text-black"
+          style={{ color: '#000000' }}
           title={product.name}
         >
           {product.name}
@@ -81,20 +92,27 @@ export const BarcodeSticker: React.FC<BarcodeStickerProps> = ({
       </div>
 
       {/* 3. Footer: Price (MRP) & Packed Date */}
-      <div className="w-full flex items-end justify-between leading-none pt-[0.4mm] border-t border-black/15">
+      <div
+        className="w-full flex items-end justify-between leading-none pt-[0.4mm] border-t border-black/15"
+        style={{ borderColor: 'rgba(0,0,0,0.15)' }}
+      >
         {options.showPrice && priceDisplay ? (
           <div className="flex items-baseline gap-[0.5mm]">
-            <span className="text-[5.5pt] font-bold text-neutral-600 uppercase">MRP:</span>
-            <span className="text-[9pt] font-black text-black tracking-tight">{priceDisplay}</span>
+            <span className="text-[5.5pt] font-bold uppercase text-neutral-600" style={{ color: '#4b5563' }}>
+              MRP:
+            </span>
+            <span className="text-[9pt] font-black tracking-tight text-black" style={{ color: '#000000' }}>
+              {priceDisplay}
+            </span>
           </div>
         ) : (
-          <div className="text-[6pt] font-semibold text-neutral-600">
+          <div className="text-[6pt] font-semibold text-neutral-600" style={{ color: '#4b5563' }}>
             {product.unit ? `Unit: ${product.unit}` : ''}
           </div>
         )}
 
         {options.showPackedDate && formattedDate && (
-          <div className="text-[6pt] font-semibold text-neutral-800 tracking-tight text-right ml-auto">
+          <div className="text-[6pt] font-semibold tracking-tight text-right ml-auto text-black" style={{ color: '#000000' }}>
             <span>Pkd: </span>
             <span className="font-bold">{formattedDate}</span>
           </div>
