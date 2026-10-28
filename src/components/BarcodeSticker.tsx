@@ -7,6 +7,7 @@ interface BarcodeStickerProps {
   previewScale?: number; // scale multiplier for on-screen preview (e.g. 1.0, 1.5, 2.0)
   className?: string;
   isPrint?: boolean;
+  isA4Sheet?: boolean;
 }
 
 export const BarcodeSticker: React.FC<BarcodeStickerProps> = ({
@@ -15,6 +16,7 @@ export const BarcodeSticker: React.FC<BarcodeStickerProps> = ({
   previewScale = 1.0,
   className = '',
   isPrint = false,
+  isA4Sheet = false,
 }) => {
   // Formatted price display
   const priceDisplay =
@@ -40,15 +42,19 @@ export const BarcodeSticker: React.FC<BarcodeStickerProps> = ({
   return (
     <div
       className={`label-sticker-page bg-white text-black box-border flex flex-col justify-between overflow-hidden select-none ${
-        isPrint ? '' : 'relative rounded-[2mm] border border-gray-300 shadow-xs'
+        isPrint
+          ? isA4Sheet
+            ? 'border border-neutral-300 rounded-[1.5mm]'
+            : ''
+          : 'relative rounded-[2mm] border border-gray-300 shadow-xs'
       } ${className}`}
       style={{
-        width: '50mm',
-        height: '25mm',
-        maxWidth: '50mm',
-        maxHeight: '25mm',
-        minWidth: '50mm',
-        minHeight: '25mm',
+        width: isA4Sheet && isPrint ? '48mm' : '50mm',
+        height: isA4Sheet && isPrint ? '24.5mm' : '25mm',
+        maxWidth: isA4Sheet && isPrint ? '48mm' : '50mm',
+        maxHeight: isA4Sheet && isPrint ? '24.5mm' : '25mm',
+        minWidth: isA4Sheet && isPrint ? '48mm' : '50mm',
+        minHeight: isA4Sheet && isPrint ? '24.5mm' : '25mm',
         padding: '1.2mm 1.8mm',
         transform: !isPrint && previewScale !== 1.0 ? `scale(${previewScale})` : undefined,
         transformOrigin: 'top left',
