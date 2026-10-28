@@ -1,6 +1,23 @@
 import React from 'react';
 import { Product, LabelPrintOptions } from '../types';
 
+// BarTender label setup (all values in mm)
+export const LABEL_SPEC = {
+  width: 45.5,
+  height: 24.0,
+  marginTop: 5.0,
+  marginBottom: 72.6, // leftover space below the labels on the page
+  marginLeft: 5.0,
+  marginRight: 5.0,
+  gapHorizontal: 3.3,
+  gapVertical: 0.0,
+  columns: 2,
+};
+
+/* -------------------------------------------------------------------------- */
+/*  Single sticker                                                            */
+/* -------------------------------------------------------------------------- */
+
 interface BarcodeStickerProps {
   product: Product;
   options: LabelPrintOptions;
@@ -10,12 +27,6 @@ interface BarcodeStickerProps {
   isA4Sheet?: boolean;
 }
 
-// TEST MODE: true = always print the static English text below.
-// Set to false once printing works to use real product / shop names again.
-const USE_STATIC_ENGLISH = true;
-const STATIC_SHOP_NAME = 'ROYAL SWEETS';
-const STATIC_PRODUCT_NAME = 'ALMOND CAKE';
-
 export const BarcodeSticker: React.FC<BarcodeStickerProps> = ({
   product,
   options,
@@ -24,108 +35,125 @@ export const BarcodeSticker: React.FC<BarcodeStickerProps> = ({
   isPrint = false,
   isA4Sheet = false,
 }) => {
-  const shopName = USE_STATIC_ENGLISH ? STATIC_SHOP_NAME : options.shopName || 'ROYAL SWEETS';
-  const productName = USE_STATIC_ENGLISH ? STATIC_PRODUCT_NAME : product.name;
-  const showShop = USE_STATIC_ENGLISH ? true : options.showShopName;
+  const { width, height } = LABEL_SPEC;
 
-  // Exactly 50mm wide x 25mm high. All print-critical styles are inline
-  // (no Tailwind breakpoints, no truncate, no letter-spacing, no line-clamp).
   return (
     <div
-      className={`label-sticker-page ${className}`}
+      className={`label-sticker-page bg-white text-black box-border flex flex-col justify-start overflow-hidden select-none ${
+        isPrint
+          ? isA4Sheet
+            ? 'border border-neutral-300 rounded-[1mm]'
+            : 'border border-transparent'
+          : 'relative rounded-[1.5mm] border border-gray-300 shadow-xs'
+      } ${className}`}
       style={{
-        boxSizing: 'border-box',
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
-        userSelect: 'none',
-        width: '50mm',
-        height: '25mm',
-        maxWidth: '50mm',
-        maxHeight: '25mm',
-        minWidth: '50mm',
-        minHeight: '25mm',
+        width: `${width}mm`,
+        height: `${height}mm`,
+        maxWidth: `${width}mm`,
+        maxHeight: `${height}mm`,
+        minWidth: `${width}mm`,
+        minHeight: `${height}mm`,
         padding: '0.8mm 1.5mm 0.5mm 1.5mm',
-        position: 'relative',
         transform: !isPrint && previewScale !== 1.0 ? `scale(${previewScale})` : undefined,
         transformOrigin: 'top left',
-        fontFamily: 'Arial, Helvetica, sans-serif',
+        fontFamily: "'Plus Jakarta Sans', system-ui, -apple-system, sans-serif",
         color: '#000000',
         backgroundColor: '#ffffff',
-        border: isPrint
-          ? isA4Sheet
-            ? '0.2mm solid #d4d4d4'
-            : 'none'
-          : '1px solid #d1d5db',
-        borderRadius: isPrint && !isA4Sheet ? 0 : '1mm',
-        pageBreakInside: 'avoid',
-        breakInside: 'avoid',
         WebkitPrintColorAdjust: 'exact',
         printColorAdjust: 'exact',
       }}
     >
       {/* 1. Header: Shop Name */}
-      {showShop && (
+      {options.showShopName && (
         <div
-          style={{
-            width: '100%',
-            height: '5mm',
-            flexShrink: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderBottom: '0.2mm solid #000000',
-            paddingBottom: '0.5mm',
-            boxSizing: 'border-box',
-            overflow: 'hidden',
-          }}
+          className="w-full flex items-center justify-center leading-none border-b border-black/20 pb-[0.5mm] shrink-0"
+          style={{ borderColor: 'rgba(0,0,0,0.2)' }}
         >
           <span
-            style={{
-              fontSize: '7.5pt',
-              fontWeight: 900,
-              lineHeight: 1,
-              textTransform: 'uppercase',
-              textAlign: 'center',
-              whiteSpace: 'nowrap',
-              color: '#000000',
-            }}
+            className="text-[7pt] font-black tracking-wider uppercase text-center truncate text-black"
+            style={{ color: '#000000', letterSpacing: '0.03em' }}
           >
-            {shopName}
+            {options.shopName || 'ROYAL SWEETS'}
           </span>
         </div>
       )}
 
       {/* 2. Center: Product Name */}
       <div
-        className="label-product-name-box"
-        style={{
-          width: '100%',
-          flex: 1,
-          minHeight: 0,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          overflow: 'hidden',
-          textAlign: 'center',
-        }}
+        className="label-product-name-box w-full flex-1 flex items-center justify-center px-[0.5mm] py-0 overflow-hidden text-center"
+        style={{ textAlign: 'center', width: '100%' }}
       >
         <div
-          className="label-product-name-text"
+          className="label-product-name-text text-[12.5pt] font-black leading-[1.15] text-center line-clamp-2 break-words text-black"
           style={{
-            width: '100%',
-            fontSize: '13pt', // fixed: same on screen and in print
-            fontWeight: 900,
-            lineHeight: 1.15,
-            textAlign: 'center',
-            wordBreak: 'break-word',
             color: '#000000',
+            textAlign: 'center',
+            width: '100%',
+            margin: '0 auto',
+            display: 'block',
           }}
-          title={productName}
+          title={product.name}
         >
-          {productName}
+          {product.name}
         </div>
       </div>
     </div>
   );
 };
+
+/* -------------------------------------------------------------------------- */
+/*  Print sheet (2-column roll layout with BarTender margins and gaps)        */
+/* -------------------------------------------------------------------------- */
+
+interface BarcodeStickerSheetProps {
+  products: Product[];
+  options: LabelPrintOptions;
+  /** Set true for continuous rolls: page height = top margin + one label row */
+  continuousRoll?: boolean;
+}
+
+export const BarcodeStickerSheet: React.FC<BarcodeStickerSheetProps> = ({
+  products,
+  options,
+  continuousRoll = false,
+}) => {
+  const L = LABEL_SPEC;
+
+  // 5 + 45.5 + 3.3 + 45.5 + 5 = 104.3mm
+  const pageWidth =
+    L.marginLeft + L.columns * L.width + (L.columns - 1) * L.gapHorizontal + L.marginRight;
+  // 5 + 24 + 72.6 = 101.6mm (4")
+  const pageHeight = continuousRoll
+    ? L.marginTop + L.height
+    : L.marginTop + L.height + L.marginBottom;
+
+  return (
+    <>
+      <style>{`
+        @media print {
+          @page { size: ${pageWidth}mm ${pageHeight}mm; margin: 0; }
+          body { margin: 0; }
+        }
+      `}</style>
+
+      <div
+        className="label-sheet"
+        style={{
+          width: `${pageWidth}mm`,
+          boxSizing: 'border-box',
+          padding: `${L.marginTop}mm ${L.marginRight}mm 0 ${L.marginLeft}mm`,
+          display: 'grid',
+          gridTemplateColumns: `repeat(${L.columns}, ${L.width}mm)`,
+          columnGap: `${L.gapHorizontal}mm`,
+          rowGap: `${L.gapVertical}mm`,
+        }}
+      >
+        {products.map((p) => (
+          <BarcodeSticker key={p.id} product={p} options={options} isPrint />
+        ))}
+      </div>
+    </>
+  );
+};
+
+export default BarcodeSticker;
