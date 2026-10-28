@@ -882,9 +882,10 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
             display: block !important;
             visibility: visible !important;
             position: static !important;
-            margin: 0 auto !important;
+            margin: 0 !important;
             padding: 0 !important;
             background: #ffffff !important;
+            text-align: left !important;
           }
 
           ${
@@ -892,35 +893,45 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
               ? `
               @page {
                 size: A4 portrait !important;
-                margin: 8mm 10mm 10mm 10mm !important;
+                margin: 5mm 0mm 5mm 0mm !important;
               }
 
               html, body {
                 width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                text-align: left !important;
               }
 
               #label-print-portal {
                 width: 100% !important;
-                max-width: 130mm !important;
+                max-width: 110mm !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                text-align: left !important;
               }
 
               .label-print-row-wrap {
                 display: block !important;
-                width: 100% !important;
-                margin-bottom: 2.5mm !important;
+                width: auto !important;
+                margin: 0 0 2.5mm 0 !important;
+                padding: 0 !important;
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
                 break-inside: avoid-page !important;
                 page-break-after: auto !important;
                 break-after: auto !important;
+                text-align: left !important;
               }
 
               .label-print-table {
-                width: 100% !important;
+                width: auto !important;
                 border-collapse: collapse !important;
+                margin: 0 !important;
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
                 break-inside: avoid-page !important;
+                text-align: left !important;
               }
 
               .label-print-table tr {
@@ -928,14 +939,15 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
                 break-inside: avoid !important;
                 break-inside: avoid-page !important;
                 height: 25mm !important;
+                text-align: left !important;
               }
 
               .label-col-cell {
-                width: 50% !important;
+                width: 50mm !important;
                 height: 25mm !important;
-                padding: 0 !important;
-                vertical-align: middle !important;
-                text-align: center !important;
+                padding: 0 3mm 0 0 !important;
+                vertical-align: top !important;
+                text-align: left !important;
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
               }
@@ -947,8 +959,8 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
                 max-height: 25mm !important;
                 min-width: 50mm !important;
                 min-height: 25mm !important;
-                display: inline-block !important;
-                margin: 0 auto !important;
+                display: block !important;
+                margin: 0 !important;
                 box-sizing: border-box !important;
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
@@ -968,10 +980,16 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
 
               html, body {
                 width: 104mm !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                text-align: left !important;
               }
 
               #label-print-portal {
                 width: 104mm !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                text-align: left !important;
               }
 
               .label-print-row-wrap {
@@ -987,19 +1005,22 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
                 padding: 0 !important;
                 box-sizing: border-box !important;
                 overflow: hidden !important;
+                text-align: left !important;
               }
 
               .label-print-table {
                 width: 104mm !important;
                 border-collapse: collapse !important;
+                margin: 0 !important;
+                text-align: left !important;
               }
 
               .label-col-cell {
                 width: 50mm !important;
                 height: 25mm !important;
-                padding: 0 !important;
-                vertical-align: middle !important;
-                text-align: center !important;
+                padding: 0 2mm 0 0 !important;
+                vertical-align: top !important;
+                text-align: left !important;
               }
 
               .label-sticker-page {
@@ -1009,8 +1030,9 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
                 max-height: 25mm !important;
                 min-width: 50mm !important;
                 min-height: 25mm !important;
+                display: block !important;
                 margin: 0 !important;
-                padding: 1.2mm 2mm !important;
+                padding: 0.8mm 1.5mm 0.5mm 1.5mm !important;
                 box-sizing: border-box !important;
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
@@ -1034,14 +1056,15 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
           <div
             id="label-print-portal"
             className={`print-only ${printLayout}`}
+            style={{ textAlign: 'left', margin: 0, padding: 0 }}
           >
             {stickerRows.map((row, rowIdx) => (
-              <div key={`row-${rowIdx}`} className="label-print-row-wrap">
-                <table className="label-print-table">
+              <div key={`row-${rowIdx}`} className="label-print-row-wrap" style={{ textAlign: 'left', margin: 0 }}>
+                <table className="label-print-table" style={{ textAlign: 'left', margin: 0 }}>
                   <tbody>
                     <tr>
-                      <td className="label-col-cell">
-                        <div style={{ display: 'inline-block', width: '50mm', height: '25mm' }}>
+                      <td className="label-col-cell" style={{ textAlign: 'left', padding: '0 3mm 0 0' }}>
+                        <div style={{ display: 'block', width: '50mm', height: '25mm', margin: 0 }}>
                           <BarcodeSticker
                             product={row.col1}
                             options={options}
@@ -1050,9 +1073,9 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
                           />
                         </div>
                       </td>
-                      <td className="label-col-cell">
+                      <td className="label-col-cell" style={{ textAlign: 'left', padding: 0 }}>
                         {row.col2 ? (
-                          <div style={{ display: 'inline-block', width: '50mm', height: '25mm' }}>
+                          <div style={{ display: 'block', width: '50mm', height: '25mm', margin: 0 }}>
                             <BarcodeSticker
                               product={row.col2}
                               options={options}
@@ -1061,7 +1084,7 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
                             />
                           </div>
                         ) : (
-                          <div style={{ display: 'inline-block', width: '50mm', height: '25mm' }} />
+                          <div style={{ display: 'block', width: '50mm', height: '25mm', margin: 0 }} />
                         )}
                       </td>
                     </tr>

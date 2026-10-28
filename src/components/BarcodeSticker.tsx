@@ -21,7 +21,7 @@ export const BarcodeSticker: React.FC<BarcodeStickerProps> = ({
   // Exactly 50mm wide x 25mm high for 2-column thermal label roll
   return (
     <div
-      className={`label-sticker-page bg-white text-black box-border flex flex-col justify-between overflow-hidden select-none ${
+      className={`label-sticker-page bg-white text-black box-border flex flex-col justify-start overflow-hidden select-none ${
         isPrint
           ? isA4Sheet
             ? 'border border-neutral-300 rounded-[1mm]'
@@ -35,7 +35,7 @@ export const BarcodeSticker: React.FC<BarcodeStickerProps> = ({
         maxHeight: '25mm',
         minWidth: '50mm',
         minHeight: '25mm',
-        padding: '1.2mm 2mm',
+        padding: '0.8mm 1.5mm 0.5mm 1.5mm',
         transform: !isPrint && previewScale !== 1.0 ? `scale(${previewScale})` : undefined,
         transformOrigin: 'top left',
         fontFamily: "'Plus Jakarta Sans', system-ui, -apple-system, sans-serif",
@@ -48,7 +48,7 @@ export const BarcodeSticker: React.FC<BarcodeStickerProps> = ({
       {/* 1. Header: Shop Name */}
       {options.showShopName && (
         <div
-          className="w-full flex items-center justify-center leading-none border-b border-black/20 pb-[0.6mm]"
+          className="w-full flex items-center justify-center leading-none border-b border-black/20 pb-[0.5mm] shrink-0"
           style={{ borderColor: 'rgba(0,0,0,0.2)' }}
         >
           <span
@@ -60,10 +60,10 @@ export const BarcodeSticker: React.FC<BarcodeStickerProps> = ({
         </div>
       )}
 
-      {/* 2. Center: Large, prominent Product Name */}
-      <div className="w-full flex-1 flex items-center justify-center px-[0.5mm] py-[0.5mm] my-auto overflow-hidden">
+      {/* 2. Center: Large, prominent Product Name filling the sticker with zero unwanted bottom gap */}
+      <div className="w-full flex-1 flex items-center justify-center px-[0.5mm] py-0 overflow-hidden">
         <div
-          className="text-[13pt] sm:text-[14pt] font-black leading-[1.18] text-center line-clamp-2 break-words text-black"
+          className="text-[13pt] sm:text-[14.5pt] font-black leading-[1.15] text-center line-clamp-2 break-words text-black"
           style={{ color: '#000000' }}
           title={product.name}
         >
