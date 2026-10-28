@@ -72,8 +72,8 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
     shopName: ta?.shop?.name || 'கனகராஜ் ஸ்வீட்ஸ்',
     showShopName: true,
     showPrice: true,
-    showBarcode: true,
-    showSkuText: true,
+    showBarcode: false,
+    showSkuText: false,
     showPackedDate: true,
     showWeightUnit: true,
     packedDate: todayIso,
@@ -237,7 +237,7 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
                 பொருள் பாக்ஸ் லேபிள் அச்சிடுதல் (Product Sticker Printing)
               </h1>
               <p className="text-xs sm:text-sm text-[#756B70] mt-0.5">
-                50 mm × 25 mm தரநிலையான வெப்ப லேபிள்கள் (CODE128 பார்கோடு, பெயர், விலை, தேதி)
+                50 mm × 25 mm தரநிலையான பாக்ஸ் ஸ்டிக்கர் லேபிள்கள் (பெயர், விலை, பேக்கிங் தேதி)
               </p>
             </div>
           </div>
@@ -606,7 +606,7 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
                   <div className="mt-3 flex items-center gap-2 text-[10px] font-mono text-gray-500 bg-white/90 px-2 py-0.5 rounded-full border border-gray-200 shadow-2xs">
                     <span>அளவு: 50.0 mm × 25.0 mm (2" × 1")</span>
                     <span>•</span>
-                    <span className="text-emerald-700 font-bold">CODE128 Scalable Vector</span>
+                    <span className="text-emerald-700 font-bold">Product Box Sticker</span>
                   </div>
                 </div>
               ) : (
@@ -682,27 +682,7 @@ export const ProductLabelPrintingView: React.FC<ProductLabelPrintingViewProps> =
                   onChange={(e) => setOptions({ ...options, showShopName: e.target.checked })}
                   className="rounded text-[#C94F6D] focus:ring-[#C94F6D]"
                 />
-                <span className="font-semibold text-gray-700">கடை பெயர்</span>
-              </label>
-
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={options.showBarcode}
-                  onChange={(e) => setOptions({ ...options, showBarcode: e.target.checked })}
-                  className="rounded text-[#C94F6D] focus:ring-[#C94F6D]"
-                />
-                <span className="font-semibold text-gray-700">CODE128 பார்கோடு</span>
-              </label>
-
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={options.showSkuText}
-                  onChange={(e) => setOptions({ ...options, showSkuText: e.target.checked })}
-                  className="rounded text-[#C94F6D] focus:ring-[#C94F6D]"
-                />
-                <span className="font-semibold text-gray-700">SKU / குறியீடு எழுத்து</span>
+                <span className="font-semibold text-gray-700">கடை பெயர் (Brand)</span>
               </label>
 
               <label className="flex items-center gap-2 cursor-pointer select-none">
