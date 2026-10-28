@@ -509,9 +509,14 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                     29/14, ஆதிசெல்வன் தெரு, அம்மாப்பேட்டை, சேலம்-3
                   </p>
                   {isBulkBill ? (
-                    <p className="text-[13px] text-black text-center">
-                      தொலைபேசி: 0427-2243676 செல்: 9360013676, 9043013676
-                    </p>
+                    <>
+                      <p className="text-[13px] text-black text-center">
+                        தொலைபேசி: 0427-2243676 செல்: 9360013676, 9043013676
+                      </p>
+                      <p className="text-[13px] text-black text-center">
+                        FSSAI எண்: {FSSAI_NO}
+                      </p>
+                    </>
                   ) : (
                     <>
                       <p className="text-[13px] text-black text-center">
@@ -542,7 +547,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                     <div className="py-3 border-b border-dashed border-black">
                       <table className="w-full table-fixed border-collapse text-left">
                         <colgroup>
-                          <col style={{ width: '9mm' }} />
+                          <col style={{ width: '12mm' }} />
                           <col />
                           <col style={{ width: '29mm' }} />
                           <col style={{ width: '15mm' }} />
@@ -643,8 +648,9 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
 
                 {/* Items List */}
                 <div className="py-4 border-b border-dashed border-black">
-                  {/* Header: 4 columns (item | qty | rate | amount) */}
-                  <div className="head-bold grid grid-cols-[minmax(0,1fr)_17mm_16mm_17mm] gap-x-1 font-bold pb-2 border-b border-black">
+                  {/* Header: 5 columns (no | item | qty | rate | amount) */}
+                  <div className="head-bold grid grid-cols-[8mm_minmax(0,1fr)_14mm_14mm_16mm] gap-x-1 font-bold pb-2 border-b border-black">
+                    <span className="text-left whitespace-nowrap">எண்</span>
                     <span className="text-left whitespace-nowrap">பொருள்</span>
                     <span className="text-left whitespace-nowrap">அளவு</span>
                     <span className="text-left whitespace-nowrap">விலை</span>
@@ -654,7 +660,8 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, onClose }) 
                   {/* Rows: name (wraps to 2+ lines in its column) with qty / rate / amount on the first line */}
                   <div className="space-y-3.5 pt-2.5">
                     {invoice.items.map((it, idx) => (
-                      <div key={idx} className="grid grid-cols-[minmax(0,1fr)_17mm_16mm_17mm] gap-x-1 items-start tabular-nums">
+                      <div key={idx} className="grid grid-cols-[8mm_minmax(0,1fr)_14mm_14mm_16mm] gap-x-1 items-start tabular-nums">
+                        <span className="text-left whitespace-nowrap">{idx + 1}</span>
                         <p className="font-bold text-black whitespace-normal break-words">{it.productName}</p>
                         <span className="text-left whitespace-nowrap">
                           {it.quantity} {it.unit}
